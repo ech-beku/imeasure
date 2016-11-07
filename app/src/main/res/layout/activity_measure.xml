@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.beku.bekubach.MeasureActivity">
+
+    <com.esri.android.map.MapView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/measureLayout"
+        android:background="@color/red"
+        android:id="@+id/MapView"
+        mapoptions.MapType="Streets"
+        mapoptions.ZoomLevel="16"></com.esri.android.map.MapView>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:id="@+id/measureLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Start Messung"
+            android:id="@+id/startMeasureButton"
+            android:enabled="false"
+            android:onClick="startLog"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Ende Messung"
+            android:id="@+id/endMeasureButton"
+            android:enabled="false"
+            android:onClick="endLog"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/nextMeasureButton"
+            android:enabled="true"
+            android:text="Nächster Messpunkt" android:onClick="nextMeasurePoint"/>
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="100dp">
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/timerLog"/>
+            <TextView
+                android:id="@+id/logView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+</LinearLayout>
+
+        </ScrollView>
+
+    </LinearLayout>
+
+
+
+
+
+</RelativeLayout>

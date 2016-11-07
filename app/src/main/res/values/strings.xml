@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">BekuBach</string>
+    <string-array name="messpunkte_array">
+        <item>Messpunkte_Office</item>
+    </string-array>
+
+
+    <string-array name="messdauer_array">
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>25</item>
+        <item>30</item>
+    </string-array>
+
+</resources>
