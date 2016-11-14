@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>TypeScript HTML App</title>
+    <link rel="stylesheet" href="app.css" type="text/css" />
+    <link rel="stylesheet" href="https://js.arcgis.com/3.18/esri/themes/calcite/dijit/calcite.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.18/esri/themes/calcite/esri/esri.css">
+    <script src="https://js.arcgis.com/3.18/"></script>
+
+    <script>
+
+        require({
+            packages: [
+                {
+                    name: "app",
+                    location: "/bachelorthesis/"
+
+                }
+            ]
+
+        }, ["app/App", "dojo/domReady!"], function (App) {
+
+            var s = new App();
+
+        });
+
+
+    </script>
+
+</head>
+<body class="calcite">
+    <div id="map"></div>
+    <div id="log_upload">
+
+        <input type="file" id="fileselector" />
+
+    </div>
+
+    <div id="measure"></div>
+</body>
+</html>

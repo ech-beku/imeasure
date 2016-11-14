@@ -1,0 +1,1 @@
+﻿declare function tim(template: string, obj: any) : string;
