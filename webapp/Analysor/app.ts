@@ -54,12 +54,24 @@ class App {
     private jsonData: Array<MeasureDataItem>;
     private txPower: number;
 
-    constructor() {
+
+    constructor(private config) {
+
         this.map = new Map("map", {
             basemap: "strseets-vector",
-            extent: new Extent({ "xmin": 948536.7929136878, "ymin": 6005378.255159049, "xmax": 948932.7128335126, "ymax": 6005659.22095434, "spatialReference": { "wkid": 102100 } })
+            extent: new Extent(this.config.startExtent)
         });
 
+        new Measure({
+            defaultLengthUnit: "meters",
+            map: this.map
+        }, "measure").startup();
+
+        this.initializeUIEvents();
+        this.initializeLayers();
+    }
+
+    private initializeUIEvents() {
 
         document.getElementById("fileselector").onchange = () => {
 
@@ -130,18 +142,10 @@ class App {
             (<HeatmapRenderer>this.heatmapLayer.renderer).setBlurRadius((<any>document.getElementById("heatmapBlur")).value);
             this.heatmapLayer.redraw();
         }
-
-        new Measure({
-            defaultLengthUnit: "meters",
-            map: this.map
-        }, "measure").startup();
-
-
-
-        this.beaconLayer = new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0",
+    }
+    private initializeLayers() {
+        this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl,
             { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
-
-
 
         this.map.addLayer(this.beaconLayer);
 
@@ -160,144 +164,47 @@ class App {
 
         this.heatmapLayer = new FeatureLayer(featureCollection, { infoTemplate: null });
         this.heatmapLayer.htmlPopupType = FeatureLayer.POPUP_NONE;
-        this.heatmapLayer.setRenderer(new HeatmapRenderer({
-            colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
-            blurRadius: 12,
-            maxPixelIntensity: 20,
-            minPixelIntensity: 6
-        }));
+        this.heatmapLayer.setRenderer(new HeatmapRenderer(this.config.heatmapProperties));
 
         this.heatmapLayer.setOpacity(0.5);
 
         this.map.addLayer(this.heatmapLayer);
 
-        this.measurePointLayer = new GraphicsLayer(<any>{
-            infoTemplate: new InfoTemplate("Messpunkt", feature => {
+        var simpleFeatureInfotemplateFunc = feature => {
 
-                var template = "";
-                for (let attr in feature.attributes) {
-                    template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
-                }
-                return template;
-            })
+            var template = "";
+            for (let attr in feature.attributes) {
+                template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
+            }
+            return template;
+        };
+
+        this.measurePointLayer = new GraphicsLayer(<any>{
+            infoTemplate: new InfoTemplate("Messpunkt", simpleFeatureInfotemplateFunc)
         });
 
-        this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson({
-            "color": [
-                56,
-                168,
-                0,
-                255
-            ],
-            "size": 4.5,
-            "angle": 0,
-            "xoffset": 0,
-            "yoffset": 0,
-            "type": "esriSMS",
-            "style": "esriSMSCircle",
-            "outline": {
-                "color": [
-                    0,
-                    0,
-                    0,
-                    255
-                ],
-                "width": 0,
-                "type": "esriSLS",
-                "style": "esriSLSSolid"
-            }
-        })));
-
+        this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
         this.map.addLayer(this.measurePointLayer);
 
 
-
         this.map.on("click", e => {
-            if (e.graphic && this.measurePointLayer.graphics.indexOf(e.graphic) >= 0) {
-                for (let g of this.resultLayer.graphics) {
-                    g.visible = (g.attributes.measureId === (<any>e).graphic.attributes.measureId);
-                }
-                for (let g of this.polygonLayer.graphics) {
-                    g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
-                }
-
-            } else if (e.graphic && (this.resultLayer.graphics.indexOf(e.graphic) >= 0 || this.polygonLayer.graphics.indexOf(e.graphic) >= 0)) { } else {
-                for (let g of this.resultLayer.graphics) {
-                    g.visible = true;
-                }
-                for (let g of this.polygonLayer.graphics) {
-                    g.visible = true;
-                }
-            }
-
-            this.polygonLayer.redraw();
-            this.resultLayer.redraw();
+            this.onMapClick(e);
         });
 
         var gOptions = {
-            infoTemplate: new InfoTemplate("Berechnete Position", feature => {
-                var template = "";
-                for (let attr in feature.attributes) {
-                    template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
-                }
-                return template;
-            })
+            infoTemplate: new InfoTemplate("Berechnete Position", simpleFeatureInfotemplateFunc)
         };
 
         this.polygonLayer = new GraphicsLayer(gOptions);
-        this.polygonLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson({
-            "color": [
-                0,
-                0,
-                0,
-                64
-            ],
-            "outline": {
-                "color": [
-                    0,
-                    0,
-                    0,
-                    255
-                ],
-                "width": 1,
-                "type": "esriSLS",
-                "style": "esriSLSSolid"
-            },
-            "type": "esriSFS",
-            "style": "esriSFSSolid"
-        })));
+        this.polygonLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.polygonSymbol)));
 
         this.map.addLayer(this.polygonLayer);
 
-
         this.resultLayer = new GraphicsLayer(gOptions);
 
-        var symbolJson = {
-            "color": [
-                255,
-                0,
-                0,
-                255
-            ],
-            "size": 4.5,
-            "angle": 0,
-            "xoffset": 0,
-            "yoffset": 0,
-            "type": "esriSMS",
-            "style": "esriSMSCircle",
-            "outline": {
-                "color": [
-                    255,
-                    0,
-                    0,
-                    255
-                ],
-                "width": 0,
-                "type": "esriSLS",
-                "style": "esriSLSSolid"
-            }
-        };
+        var symbolJson = this.config.resultPositionSymbol;
         var renderer = new UniqueValueRenderer(jsonUtils.fromJson(symbolJson), "type", "isMinimalDistance", null, ",");
+
         symbolJson.color = [0, 0, 255, 255];
         renderer.addValue("weightedAvg,false", jsonUtils.fromJson(symbolJson));
 
@@ -323,7 +230,6 @@ class App {
         this.map.addLayer(this.resultLayer);
 
 
-
     }
 
     calculatePositions() {
@@ -343,7 +249,7 @@ class App {
 
             if (measureId[id] == null) {
                 measureId[id] = new Graphic(new Point(item.x, item.y, this.map.spatialReference), null, { measureId: id });
-               
+
 
                 connectedFeatures[id] = new Array<Graphic>();
             }
@@ -559,6 +465,28 @@ class App {
             var accuracy = (0.89976) * Math.pow(ratio, 7.7095) + 0.111;
             return accuracy;
         }
+    }
+
+    private onMapClick(e) {
+        if (e.graphic && this.measurePointLayer.graphics.indexOf(e.graphic) >= 0) {
+            for (let g of this.resultLayer.graphics) {
+                g.visible = (g.attributes.measureId === (<any>e).graphic.attributes.measureId);
+            }
+            for (let g of this.polygonLayer.graphics) {
+                g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
+            }
+
+        } else if (e.graphic && (this.resultLayer.graphics.indexOf(e.graphic) >= 0 || this.polygonLayer.graphics.indexOf(e.graphic) >= 0)) { } else {
+            for (let g of this.resultLayer.graphics) {
+                g.visible = true;
+            }
+            for (let g of this.polygonLayer.graphics) {
+                g.visible = true;
+            }
+        }
+
+        this.polygonLayer.redraw();
+        this.resultLayer.redraw();
     }
 
 }

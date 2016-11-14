@@ -1,12 +1,21 @@
 define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/graphic", "esri/symbols/jsonUtils", "esri/renderers/SimpleRenderer", "esri/geometry/Point", "esri/layers/FeatureLayer", "esri/geometry/Extent", "esri/InfoTemplate", "esri/geometry/geometryEngine", "dojo/_base/lang", "esri/dijit/Measurement", "esri/geometry/Polyline", "esri/renderers/UniqueValueRenderer", "esri/renderers/HeatmapRenderer"], function (require, exports, Map, GraphicsLayer, Graphic, jsonUtils, SimpleRenderer, Point, FeatureLayer, Extent, InfoTemplate, GeometryEngine, mixin, Measure, Polyline, UniqueValueRenderer, HeatmapRenderer) {
     "use strict";
     var App = (function () {
-        function App() {
-            var _this = this;
+        function App(config) {
+            this.config = config;
             this.map = new Map("map", {
                 basemap: "strseets-vector",
-                extent: new Extent({ "xmin": 948536.7929136878, "ymin": 6005378.255159049, "xmax": 948932.7128335126, "ymax": 6005659.22095434, "spatialReference": { "wkid": 102100 } })
+                extent: new Extent(this.config.startExtent)
             });
+            new Measure({
+                defaultLengthUnit: "meters",
+                map: this.map
+            }, "measure").startup();
+            this.initializeUIEvents();
+            this.initializeLayers();
+        }
+        App.prototype.initializeUIEvents = function () {
+            var _this = this;
             document.getElementById("fileselector").onchange = function () {
                 var files = document.getElementById("fileselector").files;
                 var reader = new FileReader();
@@ -56,11 +65,10 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 _this.heatmapLayer.renderer.setBlurRadius(document.getElementById("heatmapBlur").value);
                 _this.heatmapLayer.redraw();
             };
-            new Measure({
-                defaultLengthUnit: "meters",
-                map: this.map
-            }, "measure").startup();
-            this.beaconLayer = new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0", { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
+        };
+        App.prototype.initializeLayers = function () {
+            var _this = this;
+            this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl, { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
             this.map.addLayer(this.beaconLayer);
             var layerDefinition = {
                 "geometryType": "esriGeometryPoint",
@@ -76,132 +84,32 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             };
             this.heatmapLayer = new FeatureLayer(featureCollection, { infoTemplate: null });
             this.heatmapLayer.htmlPopupType = FeatureLayer.POPUP_NONE;
-            this.heatmapLayer.setRenderer(new HeatmapRenderer({
-                colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
-                blurRadius: 12,
-                maxPixelIntensity: 20,
-                minPixelIntensity: 6
-            }));
+            this.heatmapLayer.setRenderer(new HeatmapRenderer(this.config.heatmapProperties));
             this.heatmapLayer.setOpacity(0.5);
             this.map.addLayer(this.heatmapLayer);
-            this.measurePointLayer = new GraphicsLayer({
-                infoTemplate: new InfoTemplate("Messpunkt", function (feature) {
-                    var template = "";
-                    for (var attr in feature.attributes) {
-                        template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
-                    }
-                    return template;
-                })
-            });
-            this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson({
-                "color": [
-                    56,
-                    168,
-                    0,
-                    255
-                ],
-                "size": 4.5,
-                "angle": 0,
-                "xoffset": 0,
-                "yoffset": 0,
-                "type": "esriSMS",
-                "style": "esriSMSCircle",
-                "outline": {
-                    "color": [
-                        0,
-                        0,
-                        0,
-                        255
-                    ],
-                    "width": 0,
-                    "type": "esriSLS",
-                    "style": "esriSLSSolid"
+            var simpleFeatureInfotemplateFunc = function (feature) {
+                var template = "";
+                for (var attr in feature.attributes) {
+                    template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
                 }
-            })));
+                return template;
+            };
+            this.measurePointLayer = new GraphicsLayer({
+                infoTemplate: new InfoTemplate("Messpunkt", simpleFeatureInfotemplateFunc)
+            });
+            this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
             this.map.addLayer(this.measurePointLayer);
             this.map.on("click", function (e) {
-                if (e.graphic && _this.measurePointLayer.graphics.indexOf(e.graphic) >= 0) {
-                    for (var _i = 0, _a = _this.resultLayer.graphics; _i < _a.length; _i++) {
-                        var g = _a[_i];
-                        g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
-                    }
-                    for (var _b = 0, _c = _this.polygonLayer.graphics; _b < _c.length; _b++) {
-                        var g = _c[_b];
-                        g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
-                    }
-                }
-                else if (e.graphic && (_this.resultLayer.graphics.indexOf(e.graphic) >= 0 || _this.polygonLayer.graphics.indexOf(e.graphic) >= 0)) { }
-                else {
-                    for (var _d = 0, _e = _this.resultLayer.graphics; _d < _e.length; _d++) {
-                        var g = _e[_d];
-                        g.visible = true;
-                    }
-                    for (var _f = 0, _g = _this.polygonLayer.graphics; _f < _g.length; _f++) {
-                        var g = _g[_f];
-                        g.visible = true;
-                    }
-                }
-                _this.polygonLayer.redraw();
-                _this.resultLayer.redraw();
+                _this.onMapClick(e);
             });
             var gOptions = {
-                infoTemplate: new InfoTemplate("Berechnete Position", function (feature) {
-                    var template = "";
-                    for (var attr in feature.attributes) {
-                        template += "<b>" + attr + "</b>: " + feature.attributes[attr] + "<br/>";
-                    }
-                    return template;
-                })
+                infoTemplate: new InfoTemplate("Berechnete Position", simpleFeatureInfotemplateFunc)
             };
             this.polygonLayer = new GraphicsLayer(gOptions);
-            this.polygonLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson({
-                "color": [
-                    0,
-                    0,
-                    0,
-                    64
-                ],
-                "outline": {
-                    "color": [
-                        0,
-                        0,
-                        0,
-                        255
-                    ],
-                    "width": 1,
-                    "type": "esriSLS",
-                    "style": "esriSLSSolid"
-                },
-                "type": "esriSFS",
-                "style": "esriSFSSolid"
-            })));
+            this.polygonLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.polygonSymbol)));
             this.map.addLayer(this.polygonLayer);
             this.resultLayer = new GraphicsLayer(gOptions);
-            var symbolJson = {
-                "color": [
-                    255,
-                    0,
-                    0,
-                    255
-                ],
-                "size": 4.5,
-                "angle": 0,
-                "xoffset": 0,
-                "yoffset": 0,
-                "type": "esriSMS",
-                "style": "esriSMSCircle",
-                "outline": {
-                    "color": [
-                        255,
-                        0,
-                        0,
-                        255
-                    ],
-                    "width": 0,
-                    "type": "esriSLS",
-                    "style": "esriSLSSolid"
-                }
-            };
+            var symbolJson = this.config.resultPositionSymbol;
             var renderer = new UniqueValueRenderer(jsonUtils.fromJson(symbolJson), "type", "isMinimalDistance", null, ",");
             symbolJson.color = [0, 0, 255, 255];
             renderer.addValue("weightedAvg,false", jsonUtils.fromJson(symbolJson));
@@ -219,7 +127,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             });
             this.resultLayer.setRenderer(renderer);
             this.map.addLayer(this.resultLayer);
-        }
+        };
         App.prototype.calculatePositions = function () {
             var measureData = this.jsonData;
             this.heatmapLayer.clear();
@@ -402,6 +310,31 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 var accuracy = (0.89976) * Math.pow(ratio, 7.7095) + 0.111;
                 return accuracy;
             }
+        };
+        App.prototype.onMapClick = function (e) {
+            if (e.graphic && this.measurePointLayer.graphics.indexOf(e.graphic) >= 0) {
+                for (var _i = 0, _a = this.resultLayer.graphics; _i < _a.length; _i++) {
+                    var g = _a[_i];
+                    g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
+                }
+                for (var _b = 0, _c = this.polygonLayer.graphics; _b < _c.length; _b++) {
+                    var g = _c[_b];
+                    g.visible = (g.attributes.measureId === e.graphic.attributes.measureId);
+                }
+            }
+            else if (e.graphic && (this.resultLayer.graphics.indexOf(e.graphic) >= 0 || this.polygonLayer.graphics.indexOf(e.graphic) >= 0)) { }
+            else {
+                for (var _d = 0, _e = this.resultLayer.graphics; _d < _e.length; _d++) {
+                    var g = _e[_d];
+                    g.visible = true;
+                }
+                for (var _f = 0, _g = this.polygonLayer.graphics; _f < _g.length; _f++) {
+                    var g = _g[_f];
+                    g.visible = true;
+                }
+            }
+            this.polygonLayer.redraw();
+            this.resultLayer.redraw();
         };
         return App;
     }());

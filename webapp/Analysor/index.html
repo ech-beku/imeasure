@@ -20,9 +20,9 @@
                 }
             ]
 
-        }, ["app/App", "dojo/domReady!"], function (App) {
+        }, ["./config.js", "app/App", "dojo/domReady!"], function (config, App) {
 
-            var s = new App();
+            var s = new App(config);
 
         });
 
