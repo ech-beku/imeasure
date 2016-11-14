@@ -26,13 +26,15 @@ import Polygon = require("esri/geometry/Polygon");
 
 import UniqueValueRenderer = require("esri/renderers/UniqueValueRenderer");
 
+import HeatmapRenderer = require("esri/renderers/HeatmapRenderer");
+
 export = App;
 
 interface MeasureDataItem {
     x: number;
     y: number;
     delay: number,
-    signals: Array<{ minor: number, distance: number }>
+    signals: Array<{ minor: number, distance: number, rssi: number }>
 }
 
 
@@ -41,21 +43,25 @@ class App {
     private map: Map;
 
     private measurePointLayer: GraphicsLayer;
+
+    private heatmapLayer: FeatureLayer;
+
     private resultLayer: GraphicsLayer;
     private polygonLayer: GraphicsLayer;
 
     private beaconLayer: FeatureLayer;
 
+    private jsonData: Array<MeasureDataItem>;
+    private txPower: number;
+
     constructor() {
         this.map = new Map("map", {
-            basemap: "streets-vector",
-            minScale: 20,
+            basemap: "strseets-vector",
             extent: new Extent({ "xmin": 948536.7929136878, "ymin": 6005378.255159049, "xmax": 948932.7128335126, "ymax": 6005659.22095434, "spatialReference": { "wkid": 102100 } })
         });
 
 
         document.getElementById("fileselector").onchange = () => {
-
 
             var files = (<any>document.getElementById("fileselector")).files;
 
@@ -63,15 +69,67 @@ class App {
 
             reader.onload = (event: any) => {
 
-                var dataUrl = event.target.result;
+                var t = new Date().getTime();
 
-                this.proceed(JSON.parse(dataUrl));
+                var dataUrl = event.target.result;
+                this.jsonData = JSON.parse(dataUrl);
+                this.calculatePositions();
+
+                console.log("Processing took " + (new Date().getTime() - t).toString() + " ms");
 
             }
 
             reader.readAsText(files[0]);
 
         };
+        this.txPower = <any>(<HTMLInputElement>document.getElementById("rssiSelector")).value;
+
+        document.getElementById("rssiSelector").onchange = () => {
+
+            this.txPower = <any>(<HTMLInputElement>document.getElementById("rssiSelector")).value;
+            document.getElementById("txPower").textContent = this.txPower.toString();
+            if (this.jsonData) {
+
+                for (let k of this.jsonData) {
+                    for (let s of k.signals) {
+                        s.distance = this.calculateDistance(s.rssi);
+                    }
+                }
+
+                this.calculatePositions();
+            }
+        };
+
+        document.getElementById("heatmapSelector").onchange = () => {
+
+            var type = (<any>document.getElementById("heatmapAttrSelector")).value;
+
+            ((<HeatmapRenderer>this.heatmapLayer.renderer).setField((<any>document.getElementById("heatmapSelector")).value + "_" + type));
+            this.heatmapLayer.redraw();
+        };
+
+        document.getElementById("heatmapAttrSelector").onchange = () => {
+
+            var type = (<any>document.getElementById("heatmapAttrSelector")).value;
+
+            ((<HeatmapRenderer>this.heatmapLayer.renderer).setField((<any>document.getElementById("heatmapSelector")).value + "_" + type));
+            this.heatmapLayer.redraw();
+        };
+
+        document.getElementById("heatmapMin").onchange = () => {
+            (<HeatmapRenderer>this.heatmapLayer.renderer).setMinPixelIntensity((<any>document.getElementById("heatmapMin")).value);
+            this.heatmapLayer.redraw();
+        }
+
+        document.getElementById("heatmapMax").onchange = () => {
+            (<HeatmapRenderer>this.heatmapLayer.renderer).setMaxPixelIntensity((<any>document.getElementById("heatmapMax")).value);
+            this.heatmapLayer.redraw();
+        }
+
+        document.getElementById("heatmapBlur").onchange = () => {
+            (<HeatmapRenderer>this.heatmapLayer.renderer).setBlurRadius((<any>document.getElementById("heatmapBlur")).value);
+            this.heatmapLayer.redraw();
+        }
 
         new Measure({
             defaultLengthUnit: "meters",
@@ -83,9 +141,37 @@ class App {
         this.beaconLayer = new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0",
             { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
 
+
+
         this.map.addLayer(this.beaconLayer);
 
-        this.measurePointLayer = new GraphicsLayer({
+        var layerDefinition = {
+            "geometryType": "esriGeometryPoint",
+            "fields": [{
+                "name": "BUFF_DIST",
+                "type": "esriFieldTypeInteger",
+                "alias": "Buffer Distance"
+            }]
+        }
+        var featureCollection = {
+            layerDefinition: layerDefinition,
+            featureSet: null
+        };
+
+        this.heatmapLayer = new FeatureLayer(featureCollection, { infoTemplate: null });
+        this.heatmapLayer.htmlPopupType = FeatureLayer.POPUP_NONE;
+        this.heatmapLayer.setRenderer(new HeatmapRenderer({
+            colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
+            blurRadius: 12,
+            maxPixelIntensity: 20,
+            minPixelIntensity: 6
+        }));
+
+        this.heatmapLayer.setOpacity(0.5);
+
+        this.map.addLayer(this.heatmapLayer);
+
+        this.measurePointLayer = new GraphicsLayer(<any>{
             infoTemplate: new InfoTemplate("Messpunkt", feature => {
 
                 var template = "";
@@ -95,6 +181,7 @@ class App {
                 return template;
             })
         });
+
         this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson({
             "color": [
                 56,
@@ -122,6 +209,7 @@ class App {
         })));
 
         this.map.addLayer(this.measurePointLayer);
+
 
 
         this.map.on("click", e => {
@@ -238,8 +326,11 @@ class App {
 
     }
 
-    proceed(measureData: Array<MeasureDataItem>) {
+    calculatePositions() {
 
+        var measureData = this.jsonData;
+
+        this.heatmapLayer.clear();
         this.measurePointLayer.clear();
         this.resultLayer.clear();
 
@@ -252,8 +343,7 @@ class App {
 
             if (measureId[id] == null) {
                 measureId[id] = new Graphic(new Point(item.x, item.y, this.map.spatialReference), null, { measureId: id });
-                this.measurePointLayer.add(measureId[id]);
-
+               
 
                 connectedFeatures[id] = new Array<Graphic>();
             }
@@ -290,7 +380,13 @@ class App {
             mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "trilateration"));
 
             mixin.mixin(measurePoint.attributes, stats);
+
+            this.measurePointLayer.add(measurePoint);
+            this.heatmapLayer.add(new Graphic(measurePoint.geometry, null, measurePoint.attributes));
+
         }
+
+        this.heatmapLayer.redraw();
     }
 
     getConnectedFeatures(measureItem: MeasureDataItem): Array<Graphic> {
@@ -449,4 +545,20 @@ class App {
 
         return stats;
     }
+
+
+    public calculateDistance(rssi: number): number {
+        if (rssi == 0) {
+            return -1.0; // if we cannot determine accuracy, return -1.
+        }
+        var ratio = rssi * 1.0 / this.txPower;
+        if (ratio < 1.0) {
+            return Math.pow(ratio, 10);
+        }
+        else {
+            var accuracy = (0.89976) * Math.pow(ratio, 7.7095) + 0.111;
+            return accuracy;
+        }
+    }
+
 }

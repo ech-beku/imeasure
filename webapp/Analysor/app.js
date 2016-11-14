@@ -1,21 +1,60 @@
-define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/graphic", "esri/symbols/jsonUtils", "esri/renderers/SimpleRenderer", "esri/geometry/Point", "esri/layers/FeatureLayer", "esri/geometry/Extent", "esri/InfoTemplate", "esri/geometry/geometryEngine", "dojo/_base/lang", "esri/dijit/Measurement", "esri/geometry/Polyline", "esri/renderers/UniqueValueRenderer"], function (require, exports, Map, GraphicsLayer, Graphic, jsonUtils, SimpleRenderer, Point, FeatureLayer, Extent, InfoTemplate, GeometryEngine, mixin, Measure, Polyline, UniqueValueRenderer) {
+define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/graphic", "esri/symbols/jsonUtils", "esri/renderers/SimpleRenderer", "esri/geometry/Point", "esri/layers/FeatureLayer", "esri/geometry/Extent", "esri/InfoTemplate", "esri/geometry/geometryEngine", "dojo/_base/lang", "esri/dijit/Measurement", "esri/geometry/Polyline", "esri/renderers/UniqueValueRenderer", "esri/renderers/HeatmapRenderer"], function (require, exports, Map, GraphicsLayer, Graphic, jsonUtils, SimpleRenderer, Point, FeatureLayer, Extent, InfoTemplate, GeometryEngine, mixin, Measure, Polyline, UniqueValueRenderer, HeatmapRenderer) {
     "use strict";
     var App = (function () {
         function App() {
             var _this = this;
             this.map = new Map("map", {
-                basemap: "streets-vector",
-                minScale: 20,
+                basemap: "strseets-vector",
                 extent: new Extent({ "xmin": 948536.7929136878, "ymin": 6005378.255159049, "xmax": 948932.7128335126, "ymax": 6005659.22095434, "spatialReference": { "wkid": 102100 } })
             });
             document.getElementById("fileselector").onchange = function () {
                 var files = document.getElementById("fileselector").files;
                 var reader = new FileReader();
                 reader.onload = function (event) {
+                    var t = new Date().getTime();
                     var dataUrl = event.target.result;
-                    _this.proceed(JSON.parse(dataUrl));
+                    _this.jsonData = JSON.parse(dataUrl);
+                    _this.calculatePositions();
+                    console.log("Processing took " + (new Date().getTime() - t).toString() + " ms");
                 };
                 reader.readAsText(files[0]);
+            };
+            this.txPower = document.getElementById("rssiSelector").value;
+            document.getElementById("rssiSelector").onchange = function () {
+                _this.txPower = document.getElementById("rssiSelector").value;
+                document.getElementById("txPower").textContent = _this.txPower.toString();
+                if (_this.jsonData) {
+                    for (var _i = 0, _a = _this.jsonData; _i < _a.length; _i++) {
+                        var k = _a[_i];
+                        for (var _b = 0, _c = k.signals; _b < _c.length; _b++) {
+                            var s = _c[_b];
+                            s.distance = _this.calculateDistance(s.rssi);
+                        }
+                    }
+                    _this.calculatePositions();
+                }
+            };
+            document.getElementById("heatmapSelector").onchange = function () {
+                var type = document.getElementById("heatmapAttrSelector").value;
+                (_this.heatmapLayer.renderer.setField(document.getElementById("heatmapSelector").value + "_" + type));
+                _this.heatmapLayer.redraw();
+            };
+            document.getElementById("heatmapAttrSelector").onchange = function () {
+                var type = document.getElementById("heatmapAttrSelector").value;
+                (_this.heatmapLayer.renderer.setField(document.getElementById("heatmapSelector").value + "_" + type));
+                _this.heatmapLayer.redraw();
+            };
+            document.getElementById("heatmapMin").onchange = function () {
+                _this.heatmapLayer.renderer.setMinPixelIntensity(document.getElementById("heatmapMin").value);
+                _this.heatmapLayer.redraw();
+            };
+            document.getElementById("heatmapMax").onchange = function () {
+                _this.heatmapLayer.renderer.setMaxPixelIntensity(document.getElementById("heatmapMax").value);
+                _this.heatmapLayer.redraw();
+            };
+            document.getElementById("heatmapBlur").onchange = function () {
+                _this.heatmapLayer.renderer.setBlurRadius(document.getElementById("heatmapBlur").value);
+                _this.heatmapLayer.redraw();
             };
             new Measure({
                 defaultLengthUnit: "meters",
@@ -23,6 +62,28 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             }, "measure").startup();
             this.beaconLayer = new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0", { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
             this.map.addLayer(this.beaconLayer);
+            var layerDefinition = {
+                "geometryType": "esriGeometryPoint",
+                "fields": [{
+                        "name": "BUFF_DIST",
+                        "type": "esriFieldTypeInteger",
+                        "alias": "Buffer Distance"
+                    }]
+            };
+            var featureCollection = {
+                layerDefinition: layerDefinition,
+                featureSet: null
+            };
+            this.heatmapLayer = new FeatureLayer(featureCollection, { infoTemplate: null });
+            this.heatmapLayer.htmlPopupType = FeatureLayer.POPUP_NONE;
+            this.heatmapLayer.setRenderer(new HeatmapRenderer({
+                colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
+                blurRadius: 12,
+                maxPixelIntensity: 20,
+                minPixelIntensity: 6
+            }));
+            this.heatmapLayer.setOpacity(0.5);
+            this.map.addLayer(this.heatmapLayer);
             this.measurePointLayer = new GraphicsLayer({
                 infoTemplate: new InfoTemplate("Messpunkt", function (feature) {
                     var template = "";
@@ -159,7 +220,9 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             this.resultLayer.setRenderer(renderer);
             this.map.addLayer(this.resultLayer);
         }
-        App.prototype.proceed = function (measureData) {
+        App.prototype.calculatePositions = function () {
+            var measureData = this.jsonData;
+            this.heatmapLayer.clear();
             this.measurePointLayer.clear();
             this.resultLayer.clear();
             var measureId = {};
@@ -169,7 +232,6 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 var id = item.x.toString() + "_" + item.y.toString();
                 if (measureId[id] == null) {
                     measureId[id] = new Graphic(new Point(item.x, item.y, this.map.spatialReference), null, { measureId: id });
-                    this.measurePointLayer.add(measureId[id]);
                     connectedFeatures[id] = new Array();
                 }
                 var connected = this.getConnectedFeatures(item);
@@ -198,7 +260,10 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "nearestPoint"));
                 mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "trilateration"));
                 mixin.mixin(measurePoint.attributes, stats);
+                this.measurePointLayer.add(measurePoint);
+                this.heatmapLayer.add(new Graphic(measurePoint.geometry, null, measurePoint.attributes));
             }
+            this.heatmapLayer.redraw();
         };
         App.prototype.getConnectedFeatures = function (measureItem) {
             if (measureItem.signals && measureItem.signals.length > 0) {
@@ -324,6 +389,19 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 f.attributes.distanceRatio = (f.attributes.distanceToOrigin - stats[type + "_minDistance"]) / (stats[type + "_abreviation"]);
             }
             return stats;
+        };
+        App.prototype.calculateDistance = function (rssi) {
+            if (rssi == 0) {
+                return -1.0; // if we cannot determine accuracy, return -1.
+            }
+            var ratio = rssi * 1.0 / this.txPower;
+            if (ratio < 1.0) {
+                return Math.pow(ratio, 10);
+            }
+            else {
+                var accuracy = (0.89976) * Math.pow(ratio, 7.7095) + 0.111;
+                return accuracy;
+            }
         };
         return App;
     }());

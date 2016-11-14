@@ -90,7 +90,7 @@ public class LogManager {
         try {
 
             android.text.format.DateFormat df = new android.text.format.DateFormat();
-            String fileName = df.format("yyyyMMddhhmmss", new java.util.Date()).toString();
+            String fileName = df.format("yyyyMMddHHmmss", new java.util.Date()).toString();
 
             File downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
@@ -105,7 +105,7 @@ public class LogManager {
             fw.close();
 
             DownloadManager d = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-            d.addCompletedDownload(fname, "KML Download", true, "application/xhtml+xml", kmlDoc.getAbsolutePath(), kmlDoc.length(), true);
+            d.addCompletedDownload(fname, "KML Download", true, "application/javascript", kmlDoc.getAbsolutePath(), kmlDoc.length(), true);
 
             Toast.makeText(context,
                     "Log saved...",

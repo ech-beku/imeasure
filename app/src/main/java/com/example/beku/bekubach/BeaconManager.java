@@ -9,7 +9,6 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +31,7 @@ public class BeaconManager extends ScanCallback {
 
     private OnSignalChangedListener onSignalChangedListener;
 
-    private HashMap<Integer, ArrayList<Double>> data;
+    private HashMap<Integer, ArrayList<SignalInformation>> data;
     private Timer timer;
 
     public BeaconManager(){
@@ -58,21 +57,24 @@ public class BeaconManager extends ScanCallback {
 
                 if(data != null){
 
-                    for(Map.Entry<Integer, ArrayList<Double>> entry : data.entrySet()){
+                    for(Map.Entry<Integer, ArrayList<SignalInformation>> entry : data.entrySet()){
                         double totalDist = 0;
-                        for(double d : entry.getValue()){
-                            totalDist += d;
+                        double totalRssi = 0;
+                        for(SignalInformation d : entry.getValue()){
+                            totalDist += d.distance;
+                            totalRssi += d.rssi;
                         }
                         double avgDist = totalDist / entry.getValue().size();
+                        double avgRssi = totalRssi / entry.getValue().size();
 
-                        signals.add(new BeaconSignal(entry.getKey(), avgDist));
+                        signals.add(new BeaconSignal(entry.getKey(), avgDist, avgRssi));
                     }
                 }
 
                 if(onSignalChangedListener != null)
                     onSignalChangedListener.onSignalChanged(signals);
 
-                data = new HashMap<Integer, ArrayList<Double>>();
+                data = new HashMap<Integer, ArrayList<SignalInformation>>();
             }
         }, 1000, 1000);
     }
@@ -82,7 +84,7 @@ public class BeaconManager extends ScanCallback {
     public void onScanResult(int callbackType, ScanResult result) {
 
         if(data == null){
-            data = new HashMap<Integer, ArrayList<Double>>();
+            data = new HashMap<Integer, ArrayList<SignalInformation>>();
         }
 
         Log.d("onscan", "ON scan result");
@@ -102,9 +104,12 @@ public class BeaconManager extends ScanCallback {
 
 
             if(!data.containsKey(minor))
-                data.put(minor, new ArrayList<Double>());
+                data.put(minor, new ArrayList<SignalInformation>());
 
-            data.get(minor).add(distance);
+            SignalInformation sig = new SignalInformation();
+            sig.distance = distance;
+            sig.rssi = mRssi;
+            data.get(minor).add(sig);
 
             Log.d("distance", String.valueOf(minor));
 
@@ -189,4 +194,11 @@ public class BeaconManager extends ScanCallback {
     public void setOnSignalChangedListener(OnSignalChangedListener onSignalChangedListener) {
         this.onSignalChangedListener = onSignalChangedListener;
     }
+}
+
+class SignalInformation{
+
+    public double distance;
+    public double rssi;
+
 }

@@ -11,9 +11,12 @@ public class BeaconSignal  implements Comparable{
     private int minor;
     private double distance;
 
-    public BeaconSignal(int minor, double distance){
+    private double rssi;
+
+    public BeaconSignal(int minor, double distance, double rssi){
         this.minor = minor;
         this.distance = distance;
+        this.rssi = rssi;
     }
 
     public int getMinor() {
@@ -34,10 +37,15 @@ public class BeaconSignal  implements Comparable{
         try {
             jObj.put("minor", getMinor());
             jObj.put("distance", getDistance());
+            jObj.put("rssi", getRssi());
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
         return  jObj;
+    }
+
+    public double getRssi() {
+        return rssi;
     }
 }
