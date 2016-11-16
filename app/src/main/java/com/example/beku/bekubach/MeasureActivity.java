@@ -20,8 +20,10 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.android.internal.util.Predicate;
+import com.esri.android.map.FeatureLayer;
 import com.esri.android.map.GraphicsLayer;
 import com.esri.android.map.MapView;
+import com.esri.android.map.ags.ArcGISFeatureLayer;
 import com.esri.android.map.event.OnStatusChangedListener;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
@@ -80,6 +82,10 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
         beaconManager = new BeaconManager();
 
         mapView = (MapView) findViewById(R.id.MapView);
+
+        ArcGISFeatureLayer l = new ArcGISFeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_1/FeatureServer/3", ArcGISFeatureLayer.MODE.SNAPSHOT);
+
+        mapView.addLayer(l);
 
         measurePointLayer = new GraphicsLayer();
         mapView.addLayer(measurePointLayer);

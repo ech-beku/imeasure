@@ -2,6 +2,7 @@
     <string name="app_name">BekuBach</string>
     <string-array name="messpunkte_array">
         <item>Messpunkte_Office</item>
+        <item>Messpunkte_1_FeaturesToJSON</item>
     </string-array>
 
 

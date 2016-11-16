@@ -1,0 +1,434 @@
+{
+  "displayFieldName" : "",
+  "fieldAliases" : {
+    "OBJECTID" : "OBJECTID"
+  },
+  "geometryType" : "esriGeometryPoint",
+  "spatialReference" : {
+    "wkid" : 102100,
+    "latestWkid" : 3857
+  },
+  "fields" : [
+    {
+      "name" : "OBJECTID",
+      "type" : "esriFieldTypeOID",
+      "alias" : "OBJECTID"
+    }
+  ],
+  "features" : [
+    {
+      "attributes" : {
+        "OBJECTID" : 100
+      },
+      "geometry" : {
+        "x" : 0.61589999869465828,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 101
+      },
+      "geometry" : {
+        "x" : 0.61589999869465828,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 102
+      },
+      "geometry" : {
+        "x" : 0.61589999869465828,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 103
+      },
+      "geometry" : {
+        "x" : 0.61589999869465828,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 104
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 105
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 106
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 107
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 108
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 109
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 110
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 111
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 112
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 113
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 114
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 115
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 116
+      },
+      "geometry" : {
+        "x" : 4.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 117
+      },
+      "geometry" : {
+        "x" : 4.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 118
+      },
+      "geometry" : {
+        "x" : 4.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 119
+      },
+      "geometry" : {
+        "x" : 4.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 120
+      },
+      "geometry" : {
+        "x" : 5.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 121
+      },
+      "geometry" : {
+        "x" : 5.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 122
+      },
+      "geometry" : {
+        "x" : 5.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 123
+      },
+      "geometry" : {
+        "x" : 5.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 124
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 0.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 125
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 1.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 126
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 2.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 127
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 3.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 128
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 4.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 129
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 130
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 6.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 131
+      },
+      "geometry" : {
+        "x" : 6.6158999986946583,
+        "y" : 5.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 132
+      },
+      "geometry" : {
+        "x" : 5.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 133
+      },
+      "geometry" : {
+        "x" : 4.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 135
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 136
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 137
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 7.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 138
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 6.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 139
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 6.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 140
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 5.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 141
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 5.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 142
+      },
+      "geometry" : {
+        "x" : 1.6158999986946583,
+        "y" : 4.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 143
+      },
+      "geometry" : {
+        "x" : 2.6158999986946583,
+        "y" : 4.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 144
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 4.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 145
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 5.5
+      }
+    },
+    {
+      "attributes" : {
+        "OBJECTID" : 146
+      },
+      "geometry" : {
+        "x" : 3.6158999986946583,
+        "y" : 6.5
+      }
+    }
+  ]
+}
