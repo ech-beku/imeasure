@@ -37,7 +37,9 @@
         <input type="file" id="fileselector" />
         <br/>
         rssi: <input id="rssiSelector" type="range" min="-100" max="100" step="1" value="-58" />
-        <span id="txPower"></span>
+        <span id="txPower"></span><br/>
+
+        process only first 100 features<input type="checkbox" id="proceesOnly5" />
 
     </div>
 
@@ -66,5 +68,14 @@
         blurIntensity: <input type="range" id="heatmapBlur" min="0" max="200" value="10" /><br/>
 
     </div>
+
+    <div id="stats">
+
+        <table id="statsTable" cellspacing="0">
+            <tr><th></th><th>AVG</th><th>MIN</th><th>MAX</th><th>Delay</th></tr>
+        </table>
+
+    </div>
+
 </body>
 </html>

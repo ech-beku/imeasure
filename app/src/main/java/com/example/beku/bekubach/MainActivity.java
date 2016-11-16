@@ -30,10 +30,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
+        boolean doesACheck = false;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // Android M Permission check 
             if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                doesACheck = true;
+
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("This app needs location access");
                 builder.setMessage("Please grant location access so this app can detect beacons.");
@@ -51,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+
+                doesACheck = true;
+
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("This app needs location access");
                 builder.setMessage("Please grant location access so this app can detect beacons.");
@@ -67,24 +74,24 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+if(doesACheck == false) {
+    File downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
-        File downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+    File[] files = downloadFolderPath.listFiles();
 
-        File[] files = downloadFolderPath.listFiles();
-
-        ArrayList<String> fileList = new ArrayList<String>();
-        fileList.add("-");
-        for(File file : files){
-            if(file.getName().indexOf("iBeaconLOG") == 0){
-                fileList.add(file.getName());
-            }
+    ArrayList<String> fileList = new ArrayList<String>();
+    fileList.add("-");
+    for (File file : files) {
+        if (file.getName().indexOf("iBeaconLOG") == 0) {
+            fileList.add(file.getName());
         }
+    }
 
-        ArrayAdapter<String> entryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, fileList);
-        entryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+    ArrayAdapter<String> entryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, fileList);
+    entryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        ((Spinner) findViewById(R.id.existingMeasureSpinner)).setAdapter(entryAdapter);
-
+    ((Spinner) findViewById(R.id.existingMeasureSpinner)).setAdapter(entryAdapter);
+}
     }
 
     @Override

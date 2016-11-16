@@ -1,7 +1,17 @@
 ﻿define({
 
-    startExtent: { "xmin": 948536.7929136878, "ymin": 6005378.255159049, "xmax": 948932.7128335126, "ymax": 6005659.22095434, "spatialReference": { "wkid": 102100 } },
-    beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0",
+    startExtent: {
+        "xmin": 0,
+        "ymin": 0,
+        "xmax": 7.1490000002086163,
+        "ymax": 8.1000000014901161,
+        "spatialReference": {
+            "wkid": 102100,
+            "latestWkid": 3857
+        }
+    },
+    //beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0",
+    beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_1/FeatureServer/0",
     heatmapProperties: {
         colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
         blurRadius: 12,
@@ -17,7 +27,7 @@
             0,
             255
         ],
-        "size": 4.5,
+        "size": 7,
         "angle": 0,
         "xoffset": 0,
         "yoffset": 0,
@@ -30,7 +40,7 @@
                 0,
                 255
             ],
-            "width": 0,
+            "width": 1,
             "type": "esriSLS",
             "style": "esriSLSSolid"
         }
@@ -65,7 +75,7 @@
             0,
             255
         ],
-        "size": 4.5,
+        "size": 2,
         "angle": 0,
         "xoffset": 0,
         "yoffset": 0,

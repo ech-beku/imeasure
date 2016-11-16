@@ -16,7 +16,7 @@ span {
     width: 100%;
 }
 
-#log_upload, #measure,#heatmapPanel{
+#log_upload, #measure,#heatmapPanel, #stats{
     position:absolute;
     top:20px;
     left: 100px;
@@ -35,4 +35,35 @@ span {
 
 #heatmapPanel {
     top:295px;
+}
+
+div#stats {
+    /* top: 441px; */
+    bottom: 0px;
+    height: 117px;
+    top: initial;
+    left: 0px;
+    right: 0px;
+    width: 100%;
+}
+
+table#statsTable {
+    text-align: right;
+    cell-spacing: 13px;
+}
+
+th {
+    text-align: center;
+}
+
+td {
+    /* margin: 0px 10px; */
+}
+
+td {
+    padding: 0px 20px;
+}
+
+#statsTable tr:nth-child(2n) {
+    background: #efefef;
 }

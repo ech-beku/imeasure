@@ -146,8 +146,12 @@ class App {
     private initializeLayers() {
         this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl,
             { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
+        this.beaconLayer.setOpacity(0);
 
         this.map.addLayer(this.beaconLayer);
+
+        this.map.addLayer(new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/ArcGIS/rest/services/Umgebung_1/FeatureServer/3", { mode: FeatureLayer.MODE_SNAPSHOT }));
+
 
         var layerDefinition = {
             "geometryType": "esriGeometryPoint",
@@ -208,21 +212,26 @@ class App {
         symbolJson.color = [0, 0, 255, 255];
         renderer.addValue("weightedAvg,false", jsonUtils.fromJson(symbolJson));
 
-        symbolJson.color = [0, 255, 0, 255];
+        symbolJson.color = [255, 0, 255, 255];
         renderer.addValue("trilateration,false", jsonUtils.fromJson(symbolJson));
 
-        symbolJson.outline.width = 2;
+        symbolJson.outline.width = 5;
+        symbolJson.outline.color = [255, 0, 255, 255];
         renderer.addValue("trilateration,true", jsonUtils.fromJson(symbolJson));
 
         symbolJson.color = [0, 0, 255, 255];
+        symbolJson.outline.color = [0, 0, 255, 255];
         renderer.addValue("weightedAvg,true", jsonUtils.fromJson(symbolJson));
 
+        symbolJson.color = [255, 0, 0, 255];
+        symbolJson.outline.color = [255, 0, 0, 255];
+        renderer.addValue("nearestPoint,true", jsonUtils.fromJson(symbolJson));
 
         renderer.setOpacityInfo({
             field: "distanceRatio",
             maxDataValue: 1,
             minDataValue: 0,
-            opacityValues: [1, 0]
+            opacityValues: [1, 0.5]
         });
 
         this.resultLayer.setRenderer(renderer);
@@ -235,6 +244,10 @@ class App {
     calculatePositions() {
 
         var measureData = this.jsonData;
+
+        if ((<any>document.getElementById("proceesOnly5")).value === "on" && this.jsonData.length > 100) {
+            //measureData = this.jsonData.slice(0, 100);
+        }
 
         this.heatmapLayer.clear();
         this.measurePointLayer.clear();
@@ -292,7 +305,32 @@ class App {
 
         }
 
+        this.collectOverallStats();
+
+
         this.heatmapLayer.redraw();
+        this.resultLayer.redraw();
+    }
+
+    collectOverallStats() {
+        var types = ["weightedAvg", "nearestPoint", "trilateration"];
+        var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
+
+        var currentRows = document.getElementsByClassName("statsrow");
+        for (let i = 0; i < currentRows.length; i++) {
+        }
+
+        for (let typ of types) {
+            var html = `<td>${typ}</td>`;
+            for (let att of attrs) {
+                html += `<td>${this.avg(this.measurePointLayer.graphics, f => f.attributes[typ + att]).toFixed(2)} m </td>`
+            }
+
+            var row = document.createElement("tr");
+            row.innerHTML = html;
+            row.className = "statsrow";
+            document.getElementById("statsTable").appendChild(row);
+        }
     }
 
     getConnectedFeatures(measureItem: MeasureDataItem): Array<Graphic> {

@@ -69,7 +69,9 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
         App.prototype.initializeLayers = function () {
             var _this = this;
             this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl, { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
+            this.beaconLayer.setOpacity(0);
             this.map.addLayer(this.beaconLayer);
+            this.map.addLayer(new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/ArcGIS/rest/services/Umgebung_1/FeatureServer/3", { mode: FeatureLayer.MODE_SNAPSHOT }));
             var layerDefinition = {
                 "geometryType": "esriGeometryPoint",
                 "fields": [{
@@ -113,23 +115,30 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             var renderer = new UniqueValueRenderer(jsonUtils.fromJson(symbolJson), "type", "isMinimalDistance", null, ",");
             symbolJson.color = [0, 0, 255, 255];
             renderer.addValue("weightedAvg,false", jsonUtils.fromJson(symbolJson));
-            symbolJson.color = [0, 255, 0, 255];
+            symbolJson.color = [255, 0, 255, 255];
             renderer.addValue("trilateration,false", jsonUtils.fromJson(symbolJson));
-            symbolJson.outline.width = 2;
+            symbolJson.outline.width = 5;
+            symbolJson.outline.color = [255, 0, 255, 255];
             renderer.addValue("trilateration,true", jsonUtils.fromJson(symbolJson));
             symbolJson.color = [0, 0, 255, 255];
+            symbolJson.outline.color = [0, 0, 255, 255];
             renderer.addValue("weightedAvg,true", jsonUtils.fromJson(symbolJson));
+            symbolJson.color = [255, 0, 0, 255];
+            symbolJson.outline.color = [255, 0, 0, 255];
+            renderer.addValue("nearestPoint,true", jsonUtils.fromJson(symbolJson));
             renderer.setOpacityInfo({
                 field: "distanceRatio",
                 maxDataValue: 1,
                 minDataValue: 0,
-                opacityValues: [1, 0]
+                opacityValues: [1, 0.5]
             });
             this.resultLayer.setRenderer(renderer);
             this.map.addLayer(this.resultLayer);
         };
         App.prototype.calculatePositions = function () {
             var measureData = this.jsonData;
+            if (document.getElementById("proceesOnly5").value === "on" && this.jsonData.length > 100) {
+            }
             this.heatmapLayer.clear();
             this.measurePointLayer.clear();
             this.resultLayer.clear();
@@ -171,7 +180,36 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 this.measurePointLayer.add(measurePoint);
                 this.heatmapLayer.add(new Graphic(measurePoint.geometry, null, measurePoint.attributes));
             }
+            this.collectOverallStats();
             this.heatmapLayer.redraw();
+            this.resultLayer.redraw();
+        };
+        App.prototype.collectOverallStats = function () {
+            var types = ["weightedAvg", "nearestPoint", "trilateration"];
+            var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
+            var currentRows = document.getElementsByClassName("statsrow");
+            for (var i = 0; i < currentRows.length; i++) {
+            }
+            var _loop_1 = function(typ) {
+                html = "<td>" + typ + "</td>";
+                var _loop_2 = function(att) {
+                    html += "<td>" + this_1.avg(this_1.measurePointLayer.graphics, function (f) { return f.attributes[typ + att]; }).toFixed(2) + " m </td>";
+                };
+                for (var _i = 0, attrs_1 = attrs; _i < attrs_1.length; _i++) {
+                    var att = attrs_1[_i];
+                    _loop_2(att);
+                }
+                row = document.createElement("tr");
+                row.innerHTML = html;
+                row.className = "statsrow";
+                document.getElementById("statsTable").appendChild(row);
+            };
+            var this_1 = this;
+            var html, row;
+            for (var _a = 0, types_1 = types; _a < types_1.length; _a++) {
+                var typ = types_1[_a];
+                _loop_1(typ);
+            }
         };
         App.prototype.getConnectedFeatures = function (measureItem) {
             if (measureItem.signals && measureItem.signals.length > 0) {

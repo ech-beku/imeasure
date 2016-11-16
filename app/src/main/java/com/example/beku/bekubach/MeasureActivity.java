@@ -8,6 +8,10 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.content.Context;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.support.v4.widget.TextViewCompat;
@@ -72,12 +76,31 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
     private double measureDuration;
     private long measureStart;
     private Timer measureTimer;
+    private MediaPlayer mp;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_measure);
+
+        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        mp = new MediaPlayer();
+        try {
+            mp.setDataSource(this, soundUri);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+
+        if (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
+            mp.setAudioStreamType(AudioManager.STREAM_ALARM);
+            try {
+                mp.prepare();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         beaconManager = new BeaconManager();
 
@@ -297,9 +320,6 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
                         if ((System.currentTimeMillis() - measureStart) / 1000 > measureDuration) {
                             endLog(null);
 
-
-
-
                         }
 
                         ((TextView) findViewById(R.id.timerLog)).setText("Verbleibend: " + String.valueOf(measureDuration - Math.floor((System.currentTimeMillis() - measureStart) / 1000 )) + "s");
@@ -312,6 +332,8 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
     }
 
     public void endLog(View v) {
+
+        mp.start();
         logManager.stop(this);
         checkButtonState();
         measureTimer.cancel();

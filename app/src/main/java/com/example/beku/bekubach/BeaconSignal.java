@@ -29,7 +29,7 @@ public class BeaconSignal  implements Comparable{
 
     @Override
     public int compareTo(Object another) {
-        return getMinor() - ((BeaconSignal)another).getMinor();
+        return  getDistance() - ((BeaconSignal)another).getDistance() < 0 ? -1 : 1;
     }
 
     public JSONObject toJson() {

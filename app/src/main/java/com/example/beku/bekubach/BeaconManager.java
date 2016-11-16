@@ -117,7 +117,12 @@ public class BeaconManager extends ScanCallback {
             if(onSignalChangedListener != null){
                 //onSignalChangedListener.onSignalChanged("Beacon " + minor +": " + String.valueOf(distance )+ " m " + mRssi);
             }
+        }else{
+
+            Log.d("skipped a beacon", uuid);
+
         }
+
     }
     private String getBeaconUUID(byte[] data){
         StringBuilder strBuilder = new StringBuilder();
