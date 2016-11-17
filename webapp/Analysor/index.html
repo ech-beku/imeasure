@@ -32,42 +32,61 @@
 </head>
 <body class="calcite">
     <div id="map"></div>
-    <div id="log_upload">
 
-        <input type="file" id="fileselector" />
-        <br/>
-        rssi: <input id="rssiSelector" type="range" min="-100" max="100" step="1" value="-58" />
-        <span id="txPower"></span><br/>
+    <div class="containers">
 
-        process only first 100 features<input type="checkbox" id="proceesOnly5" />
+
+        <div id="log_upload">
+
+            <input type="file" id="fileselector" />
+            <br />
+            rssi: <input id="rssiSelector" type="range" min="-100" max="100" step="1" value="-58" />
+            <span id="txPower">-58</span><br />
+
+            process only first 100 features<input checked="checked" type="checkbox" id="proceesOnly5" /><br/>
+            draw trilateration polygons<input type="checkbox" id="drawTrilateration" /><br/>
+            inputcorrection <input id="distanceCorrection" value="0" /><br />
+            distance Filter <input id="distanceFilter" value="5"/> <br/>
+            <button id="recalc">Calculate!</button>
+
+        </div>
+
+        <div id="measure"></div>
+
+        <div id="heatmapPanel">
+
+            <select id="heatmapSelector">
+                <option value="weightedAvg">WeightedAverage</option>
+                <option value="nearestPoint">NearestPoint</option>
+                <option value="trilateration">Trilateration</option>
+            </select>
+
+            <select id="heatmapAttrSelector">
+                <option value="avgDistance">Avg Distance</option>
+                <option value="minDistance">Min Distance</option>
+                <option value="maxDistance">Max Distance</option>
+                <option value="abreviation">Abreviation</option>
+                <option value="delayOfMinDistance">Delay</option>
+            </select>
+
+
+            <br />
+            minIntensity: <input type="range" id="heatmapMin" min="0" max="500" value="10" /><br />
+            maxIntensity: <input type="range" id="heatmapMax" min="0" max="500" value="250" /><br />
+            blurIntensity: <input type="range" id="heatmapBlur" min="0" max="200" value="10" /><br />
+
+        </div>
+
+        <div>
+
+            RSSI Calibration <button id="rssiCalibration">Execute</button>
+
+            <div id="calibrationresult"></div>
+
+        </div>
 
     </div>
 
-    <div id="measure"></div>
-
-    <div id="heatmapPanel">
-
-        <select id="heatmapSelector">
-            <option value="weightedAvg">WeightedAverage</option>
-            <option value="nearestPoint">NearestPoint</option>
-            <option value="trilateration">Trilateration</option>
-        </select>
-
-        <select id="heatmapAttrSelector">
-            <option value="avgDistance">Avg Distance</option>
-            <option value="minDistance">Min Distance</option>
-            <option value="maxDistance">Max Distance</option>
-            <option value="abreviation">Abreviation</option>
-            <option value="delayOfMinDistance">Delay</option>
-        </select>
-
-
-        <br/>
-        minIntensity: <input type="range" id="heatmapMin" min="0" max="500" value="10" /><br/>
-        maxIntensity: <input type="range" id="heatmapMax" min="0" max="500" value="250" /><br/>
-        blurIntensity: <input type="range" id="heatmapBlur" min="0" max="200" value="10" /><br/>
-
-    </div>
 
     <div id="stats">
 

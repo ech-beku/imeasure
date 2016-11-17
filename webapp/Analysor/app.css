@@ -16,18 +16,25 @@ span {
     width: 100%;
 }
 
-#log_upload, #measure,#heatmapPanel, #stats{
-    position:absolute;
-    top:20px;
-    left: 100px;
+.containers>div, #stats{
     background:white;
     box-shadow: 0px 0px 3px 1px rgba(0,0,0,0.3);
     padding: 10px;
-    width: 261px;
+}
+
+
+.containers{
+    position:absolute;
+    top: 15px;
+    left: 60px;
+    width:260px;
+}
+
+.containers>div{
+    margin-bottom:10px;
 }
 
 #measure{
-    top: 110px;
     height:165px;
 }
 
@@ -39,6 +46,7 @@ span {
 
 div#stats {
     /* top: 441px; */
+    position:absolute;
     bottom: 0px;
     height: 117px;
     top: initial;
@@ -66,4 +74,9 @@ td {
 
 #statsTable tr:nth-child(2n) {
     background: #efefef;
+}
+
+div#calibrationresult {
+    overflow-y: scroll;
+    max-height: 300px;
 }

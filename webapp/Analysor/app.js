@@ -3,6 +3,8 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
     var App = (function () {
         function App(config) {
             this.config = config;
+            this.distanceCorrection = 2;
+            this.distanceFilter = 5;
             this.map = new Map("map", {
                 basemap: "strseets-vector",
                 extent: new Extent(this.config.startExtent)
@@ -37,11 +39,13 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                         var k = _a[_i];
                         for (var _b = 0, _c = k.signals; _b < _c.length; _b++) {
                             var s = _c[_b];
-                            s.distance = _this.calculateDistance(s.rssi);
+                            s.distance = _this.calculateDistance(s.rssi, _this.txPower);
                         }
                     }
-                    _this.calculatePositions();
                 }
+            };
+            document.getElementById("recalc").onclick = function () {
+                _this.calculatePositions();
             };
             document.getElementById("heatmapSelector").onchange = function () {
                 var type = document.getElementById("heatmapAttrSelector").value;
@@ -64,6 +68,12 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             document.getElementById("heatmapBlur").onchange = function () {
                 _this.heatmapLayer.renderer.setBlurRadius(document.getElementById("heatmapBlur").value);
                 _this.heatmapLayer.redraw();
+            };
+            document.getElementById("rssiCalibration").onclick = function () {
+                _this.createRssiCalibrationReport();
+            };
+            document.getElementById("drawTrilateration").onclick = function () {
+                _this.polygonLayer.setVisibility(document.getElementById("drawTrilateration").checked);
             };
         };
         App.prototype.initializeLayers = function () {
@@ -99,8 +109,6 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             this.measurePointLayer = new GraphicsLayer({
                 infoTemplate: new InfoTemplate("Messpunkt", simpleFeatureInfotemplateFunc)
             });
-            this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
-            this.map.addLayer(this.measurePointLayer);
             this.map.on("click", function (e) {
                 _this.onMapClick(e);
             });
@@ -134,14 +142,20 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             });
             this.resultLayer.setRenderer(renderer);
             this.map.addLayer(this.resultLayer);
+            this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
+            this.map.addLayer(this.measurePointLayer);
         };
         App.prototype.calculatePositions = function () {
             var measureData = this.jsonData;
-            if (document.getElementById("proceesOnly5").value === "on" && this.jsonData.length > 100) {
+            this.distanceCorrection = parseInt(document.getElementById("distanceCorrection").value);
+            this.distanceFilter = parseFloat(document.getElementById("distanceFilter").value);
+            if (document.getElementById("proceesOnly5").checked && this.jsonData.length > 100) {
+                measureData = this.jsonData.slice(0, 100);
             }
             this.heatmapLayer.clear();
             this.measurePointLayer.clear();
             this.resultLayer.clear();
+            this.polygonLayer.clear();
             var measureId = {};
             var connectedFeatures = {};
             for (var _i = 0, measureData_1 = measureData; _i < measureData_1.length; _i++) {
@@ -169,9 +183,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 var measurePoint = measureId[id_1];
                 for (var _b = 0, _c = connectedFeatures[id_1]; _b < _c.length; _b++) {
                     var f = _c[_b];
-                    var poly1 = new Polyline(this.map.spatialReference);
-                    poly1.addPath([measurePoint.geometry, f.geometry]);
-                    f.attributes.distanceToOrigin = GeometryEngine.geodesicLength(poly1, "meters");
+                    f.attributes.distanceToOrigin = this.getDistanceFromPoints(measurePoint.geometry, f.geometry);
                 }
                 var stats = this.getStats(measurePoint, connectedFeatures[id_1], "weightedAvg");
                 mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "nearestPoint"));
@@ -184,11 +196,17 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             this.heatmapLayer.redraw();
             this.resultLayer.redraw();
         };
+        App.prototype.getDistanceFromPoints = function (p1, p2) {
+            var poly1 = new Polyline(this.map.spatialReference);
+            poly1.addPath([p1, p2]);
+            return GeometryEngine.geodesicLength(poly1, "meters");
+        };
         App.prototype.collectOverallStats = function () {
             var types = ["weightedAvg", "nearestPoint", "trilateration"];
             var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
             var currentRows = document.getElementsByClassName("statsrow");
-            for (var i = 0; i < currentRows.length; i++) {
+            while (currentRows.length > 0) {
+                currentRows.item(0).remove();
             }
             var _loop_1 = function(typ) {
                 html = "<td>" + typ + "</td>";
@@ -220,37 +238,64 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
         };
         App.prototype.getWeightedAvg = function (measureItem) {
             var _this = this;
-            var latCounter = this.sum(measureItem.signals, function (item) { return _this.getBeaconLat(item.minor) / item.distance; });
-            var lnCounter = this.sum(measureItem.signals, function (item) { return _this.getBeaconLn(item.minor) / item.distance; });
-            var dividor = this.sum(measureItem.signals, function (item) { return 1 / item.distance; });
+            var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
+            var latCounter = this.sum(filtered, function (item) { return _this.getBeaconLat(item.minor) / item.distance; });
+            var lnCounter = this.sum(filtered, function (item) { return _this.getBeaconLn(item.minor) / item.distance; });
+            var dividor = this.sum(filtered, function (item) { return 1 / item.distance; });
             var lat = latCounter / dividor;
             var ln = lnCounter / dividor;
             return new Graphic(new Point(lat, ln, this.map.spatialReference), null, { type: "weightedAvg", delay: measureItem.delay });
         };
         App.prototype.getNearestPoint = function (measureItem) {
-            var min = this.min(measureItem.signals, function (t) { return t.distance; });
-            var beaconId = measureItem.signals.filter(function (s) { return s.distance === min; })[0].minor;
+            var _this = this;
+            var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
+            var min = this.min(filtered, function (t) { return t.distance; });
+            var beaconId = filtered.filter(function (s) { return s.distance === min; })[0].minor;
             return new Graphic(this.getBeacon(beaconId).geometry, null, {
                 type: "nearestPoint", delay: measureItem.delay
             });
         };
         App.prototype.getTrilateration = function (measureItem) {
-            var sorted = measureItem.signals.sort(function (a, b) { return b.distance - a.distance; });
+            var _this = this;
+            var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
+            var sorted = filtered.sort(function (a, b) { return b.distance - a.distance; });
             var farestBeacon = this.getBeacon(sorted[0].minor);
             var startingGeometry = GeometryEngine.geodesicBuffer(farestBeacon.geometry, sorted[0].distance, "meters");
+            if (startingGeometry == null)
+                console.log("starting geometry was null");
             for (var j = 1; j < sorted.length; j++) {
                 var buffer = GeometryEngine.geodesicBuffer(this.getBeacon(sorted[j].minor).geometry, sorted[j].distance, "meters");
-                if (GeometryEngine.intersects(buffer, startingGeometry)) {
-                    startingGeometry = GeometryEngine.intersect(buffer, startingGeometry);
+                if (buffer == null) {
+                    console.log("buffer geometry was null");
                 }
                 else {
-                    startingGeometry = buffer;
+                    this.polygonLayer.add(new Graphic(buffer, null, {
+                        type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+                    }));
+                }
+                ;
+                try {
+                    if (GeometryEngine.intersects(buffer, startingGeometry)) {
+                        var intersection = GeometryEngine.intersect(buffer, startingGeometry);
+                        if (intersection == null) {
+                            console.log("buffer and start intersected, but intersection was null");
+                        }
+                        else {
+                            startingGeometry = intersection;
+                        }
+                    }
+                    else {
+                        startingGeometry = buffer;
+                    }
+                }
+                catch (e) {
+                    console.log(buffer, startingGeometry);
                 }
             }
             startingGeometry = GeometryEngine.simplify(startingGeometry);
-            //this.polygonLayer.add(new Graphic(<Polygon>startingGeometry, null, {
-            //    type: "trilateration", delay: measureItem.delay
-            //}));
+            this.polygonLayer.add(new Graphic(startingGeometry, null, {
+                type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+            }));
             return new Graphic(this.getCentroid(startingGeometry), null, {
                 type: "trilateration", delay: measureItem.delay
             });
@@ -336,17 +381,17 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             }
             return stats;
         };
-        App.prototype.calculateDistance = function (rssi) {
+        App.prototype.calculateDistance = function (rssi, txPower) {
             if (rssi == 0) {
                 return -1.0; // if we cannot determine accuracy, return -1.
             }
-            var ratio = rssi * 1.0 / this.txPower;
+            var ratio = rssi * 1.0 / txPower;
             if (ratio < 1.0) {
-                return Math.pow(ratio, 10);
+                return Math.pow(ratio, 10) + this.distanceCorrection;
             }
             else {
                 var accuracy = (0.89976) * Math.pow(ratio, 7.7095) + 0.111;
-                return accuracy;
+                return accuracy + this.distanceCorrection;
             }
         };
         App.prototype.onMapClick = function (e) {
@@ -373,6 +418,110 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             }
             this.polygonLayer.redraw();
             this.resultLayer.redraw();
+        };
+        App.prototype.createRssiCalibrationReport = function () {
+            this.distanceCorrection = parseInt(document.getElementById("distanceCorrection").value);
+            this.distanceFilter = parseFloat(document.getElementById("distanceFilter").value);
+            var txPowers = [];
+            var dists = {};
+            for (var i = -100; i < -0; i++) {
+                txPowers.push(i);
+                dists[i] = [];
+            }
+            var measureIds = {};
+            var allDeltas = {};
+            for (var _i = 0, _a = this.jsonData; _i < _a.length; _i++) {
+                var measurePoint_1 = _a[_i];
+                var id = measurePoint_1.x.toString() + "_" + measurePoint_1.y.toString();
+                if (measureIds[id] == null) {
+                    measureIds[id] = { signals: [], x: measurePoint_1.x, y: measurePoint_1.y };
+                }
+                for (var _b = 0, _c = measurePoint_1.signals; _b < _c.length; _b++) {
+                    var sig = _c[_b];
+                    measureIds[id].signals.push(sig);
+                }
+            }
+            for (var id_2 in measureIds) {
+                var measurePoint = measureIds[id_2];
+                var collectedBeacons = {};
+                for (var _d = 0, _e = measurePoint.signals; _d < _e.length; _d++) {
+                    var sig = _e[_d];
+                    if (collectedBeacons[sig.minor] == null) {
+                        collectedBeacons[sig.minor] = [sig.rssi];
+                    }
+                    else {
+                        collectedBeacons[sig.minor].push(sig.rssi);
+                    }
+                }
+                for (var beac in collectedBeacons) {
+                    var bec = this.getBeacon(parseInt(beac));
+                    var distanceBecMeasure = this.getDistanceFromPoints(new Point(measurePoint.x, measurePoint.y, this.map.spatialReference), bec.geometry);
+                    for (var _f = 0, txPowers_1 = txPowers; _f < txPowers_1.length; _f++) {
+                        var txPower = txPowers_1[_f];
+                        if (allDeltas[txPower] == null)
+                            allDeltas[txPower] = [];
+                        var sss = [];
+                        for (var _g = 0, _h = collectedBeacons[beac]; _g < _h.length; _g++) {
+                            var k = _h[_g];
+                            var dist = this.calculateDistance(k, txPower);
+                            if (dist < this.distanceFilter) {
+                                allDeltas[txPower].push(dist - distanceBecMeasure);
+                                sss.push(dist);
+                            }
+                        }
+                        if (sss.length <= 0) {
+                            console.log("no data for tx" + txPower);
+                        }
+                        else {
+                            var distAvg = this.avg(sss, function (s) { return s; });
+                            var deltaDist = distAvg - distanceBecMeasure;
+                            dists[txPower].push(deltaDist);
+                        }
+                    }
+                }
+            }
+            var tab = document.createElement("table");
+            var _loop_3 = function(dist_1) {
+                var cur = dists[dist_1];
+                avg = this_2.avg(cur, function (s) { return s; });
+                tr = document.createElement("tr");
+                td1 = document.createElement("td");
+                td1.textContent = dist_1;
+                td2 = document.createElement("td");
+                td2.textContent = avg.toFixed(2);
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tab.appendChild(tr);
+                tr.style.cursor = "pointer";
+                tr.onclick = function () {
+                    var start = -10;
+                    var stop = 10;
+                    var step = 0.5;
+                    var stat = {};
+                    for (var j = start; j <= stop; j += step) {
+                        stat[j] = 0;
+                        for (var _i = 0, _a = allDeltas[dist_1]; _i < _a.length; _i++) {
+                            var item = _a[_i];
+                            if (j <= item && item < (j + step))
+                                stat[j]++;
+                        }
+                    }
+                    var i = document.createElement("textarea");
+                    var str = "";
+                    for (var item in stat) {
+                        str += item + "\t" + stat[item] + "\n";
+                    }
+                    i.value = str;
+                    document.getElementById("calibrationresult").appendChild(i);
+                };
+            };
+            var this_2 = this;
+            var avg, tr, td1, td2;
+            for (var dist_1 in dists) {
+                _loop_3(dist_1);
+            }
+            document.getElementById("calibrationresult").innerHTML = "";
+            document.getElementById("calibrationresult").appendChild(tab);
         };
         return App;
     }());

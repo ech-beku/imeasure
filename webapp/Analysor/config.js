@@ -51,7 +51,7 @@
             0,
             0,
             0,
-            64
+            0
         ],
         "outline": {
             "color": [
@@ -60,7 +60,7 @@
                 0,
                 255
             ],
-            "width": 1,
+            "width": 0.5,
             "type": "esriSLS",
             "style": "esriSLSSolid"
         },
