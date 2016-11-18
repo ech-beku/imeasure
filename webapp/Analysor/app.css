@@ -80,3 +80,11 @@ div#calibrationresult {
     overflow-y: scroll;
     max-height: 300px;
 }
+
+div#calibrationresult   td {
+    padding: 4px;
+}
+
+#calibrationresult tr:nth-child(2n) {
+    background: #ececec;
+}

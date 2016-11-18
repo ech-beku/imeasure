@@ -267,7 +267,7 @@ class App {
             measureData = this.jsonData.slice(0, 100);
         }
 
-      
+
         this.heatmapLayer.clear();
         this.measurePointLayer.clear();
         this.resultLayer.clear();
@@ -361,7 +361,19 @@ class App {
 
         if (measureItem.signals && measureItem.signals.length > 0) {
             var weightedAvg = this.getWeightedAvg(measureItem);
-            return [weightedAvg, this.getNearestPoint(measureItem), this.getTrilateration(measureItem)];
+            var nearest = this.getNearestPoint(measureItem);
+            var trilat = this.getTrilateration(measureItem);
+
+            var res = [];
+
+
+            if (weightedAvg) res.push(weightedAvg);
+            if (nearest) res.push(nearest);
+            if (trilat) res.push(trilat); 
+
+            
+
+            return res;
         }
 
         return [];
@@ -372,74 +384,84 @@ class App {
 
         var filtered = measureItem.signals.filter(h => h.distance < this.distanceFilter);
 
-        var latCounter = this.sum(filtered, item => this.getBeaconLat(item.minor) / item.distance);
-        var lnCounter = this.sum(filtered, item => this.getBeaconLn(item.minor) / item.distance);
-        var dividor = this.sum(filtered, item => 1 / item.distance);
+        if (filtered.length > 0) {
 
-        var lat = latCounter / dividor;
-        var ln = lnCounter / dividor;
+            var latCounter = this.sum(filtered, item => this.getBeaconLat(item.minor) / item.distance);
+            var lnCounter = this.sum(filtered, item => this.getBeaconLn(item.minor) / item.distance);
+            var dividor = this.sum(filtered, item => 1 / item.distance);
 
-        return new Graphic(new Point(lat, ln, this.map.spatialReference), null, { type: "weightedAvg", delay: measureItem.delay });
+            var lat = latCounter / dividor;
+            var ln = lnCounter / dividor;
+
+            return new Graphic(new Point(lat, ln, this.map.spatialReference), null, { type: "weightedAvg", delay: measureItem.delay });
+        }
     }
 
     getNearestPoint(measureItem: MeasureDataItem): Graphic {
         var filtered = measureItem.signals.filter(h => h.distance < this.distanceFilter);
         var min = this.min(filtered, t => t.distance);
 
-        var beaconId = filtered.filter(s => s.distance === min)[0].minor;
-        return new Graphic(this.getBeacon(beaconId).geometry, null, {
-            type: "nearestPoint", delay: measureItem.delay
-        });
+        var beacon = filtered.filter(s => s.distance === min);
+
+        if (beacon.length > 0) {
+            var beaconId = beacon[0].minor;
+
+            return new Graphic(this.getBeacon(beaconId).geometry, null, {
+                type: "nearestPoint", delay: measureItem.delay
+            });
+        } 
     }
 
     getTrilateration(measureItem: MeasureDataItem): Graphic {
         var filtered = measureItem.signals.filter(h => h.distance < this.distanceFilter);
         var sorted = filtered.sort((a, b) => b.distance - a.distance);
 
-        var farestBeacon = this.getBeacon(sorted[0].minor);
-        var startingGeometry = GeometryEngine.geodesicBuffer(farestBeacon.geometry, sorted[0].distance, "meters");
+        if (sorted.length > 0) {
+            var farestBeacon = this.getBeacon(sorted[0].minor);
+            var startingGeometry = GeometryEngine.geodesicBuffer(farestBeacon.geometry, sorted[0].distance, "meters");
 
-        if (startingGeometry == null) console.log("starting geometry was null");
+            if (startingGeometry == null) console.log("starting geometry was null");
 
-        for (var j = 1; j < sorted.length; j++) {
-            var buffer = GeometryEngine.geodesicBuffer(this.getBeacon(sorted[j].minor).geometry, sorted[j].distance, "meters");
+            for (var j = 1; j < sorted.length; j++) {
+                var buffer = GeometryEngine.geodesicBuffer(this.getBeacon(sorted[j].minor).geometry, sorted[j].distance, "meters");
 
-            if (buffer == null) {
-                console.log("buffer geometry was null")
-            } else {
-                this.polygonLayer.add(new Graphic(<Polygon>buffer, null, {
-                    type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
-                }));
-            };
-
-            try {
-
-                if (GeometryEngine.intersects(<any>buffer, <any>startingGeometry)) {
-                    var intersection = <any>GeometryEngine.intersect(buffer, <any>startingGeometry);
-
-                    if (intersection == null) {
-                        console.log("buffer and start intersected, but intersection was null");
-                    } else {
-                        startingGeometry = intersection;
-                    }
-
+                if (buffer == null) {
+                    console.log("buffer geometry was null")
                 } else {
-                    startingGeometry = buffer;
+                    this.polygonLayer.add(new Graphic(<Polygon>buffer, null, {
+                        type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+                    }));
+                };
+
+                try {
+
+                    if (GeometryEngine.intersects(<any>buffer, <any>startingGeometry)) {
+                        var intersection = <any>GeometryEngine.intersect(buffer, <any>startingGeometry);
+
+                        if (intersection == null) {
+                            console.log("buffer and start intersected, but intersection was null");
+                        } else {
+                            startingGeometry = intersection;
+                        }
+
+                    } else {
+                        startingGeometry = buffer;
+                    }
+                } catch (e) {
+                    console.log(buffer, startingGeometry);
                 }
-            } catch (e) {
-                console.log(buffer, startingGeometry);
             }
+
+            startingGeometry = <any>GeometryEngine.simplify(<any>startingGeometry);
+
+            this.polygonLayer.add(new Graphic(<Polygon>startingGeometry, null, {
+                type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+            }));
+
+            return new Graphic(this.getCentroid(<Polygon>startingGeometry), null, {
+                type: "trilateration", delay: measureItem.delay
+            });
         }
-
-        startingGeometry = <any>GeometryEngine.simplify(<any>startingGeometry);
-
-        this.polygonLayer.add(new Graphic(<Polygon>startingGeometry, null, {
-            type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
-        }));
-
-        return new Graphic(this.getCentroid(<Polygon>startingGeometry), null, {
-            type: "trilateration", delay: measureItem.delay
-        });
 
     }
 
@@ -642,17 +664,15 @@ class App {
                     }
 
                     if (sss.length <= 0) {
-
                         console.log("no data for tx" + txPower);
-
                     } else {
                         var distAvg = this.avg(sss, s => <number>s);
                         var deltaDist = distAvg - distanceBecMeasure;
 
                         dists[txPower].push(deltaDist);
                     }
-                    
-                    
+
+
                 }
 
             }
@@ -665,12 +685,16 @@ class App {
 
             var avg = this.avg(cur, s => <number>s);
 
+            var avg2 = this.avg(allDeltas[dist], s => <number>s);
+            var varianz = this.sum(allDeltas[dist], s => Math.pow(avg2 - <number>s, 2)) / allDeltas[dist].length;
+            var stddev = Math.sqrt(varianz);
+
             var tr = document.createElement("tr");
             var td1 = document.createElement("td");
             td1.textContent = dist;
 
             var td2 = document.createElement("td");
-            td2.textContent = avg.toFixed(2);
+            td2.textContent = avg.toFixed(2) + "/" + avg2.toFixed(2) + " / " + varianz.toFixed(2) + " / " + stddev.toFixed(2);
 
             tr.appendChild(td1);
             tr.appendChild(td2);

@@ -232,73 +232,89 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
         App.prototype.getConnectedFeatures = function (measureItem) {
             if (measureItem.signals && measureItem.signals.length > 0) {
                 var weightedAvg = this.getWeightedAvg(measureItem);
-                return [weightedAvg, this.getNearestPoint(measureItem), this.getTrilateration(measureItem)];
+                var nearest = this.getNearestPoint(measureItem);
+                var trilat = this.getTrilateration(measureItem);
+                var res = [];
+                if (weightedAvg)
+                    res.push(weightedAvg);
+                if (nearest)
+                    res.push(nearest);
+                if (trilat)
+                    res.push(trilat);
+                return res;
             }
             return [];
         };
         App.prototype.getWeightedAvg = function (measureItem) {
             var _this = this;
             var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
-            var latCounter = this.sum(filtered, function (item) { return _this.getBeaconLat(item.minor) / item.distance; });
-            var lnCounter = this.sum(filtered, function (item) { return _this.getBeaconLn(item.minor) / item.distance; });
-            var dividor = this.sum(filtered, function (item) { return 1 / item.distance; });
-            var lat = latCounter / dividor;
-            var ln = lnCounter / dividor;
-            return new Graphic(new Point(lat, ln, this.map.spatialReference), null, { type: "weightedAvg", delay: measureItem.delay });
+            if (filtered.length > 0) {
+                var latCounter = this.sum(filtered, function (item) { return _this.getBeaconLat(item.minor) / item.distance; });
+                var lnCounter = this.sum(filtered, function (item) { return _this.getBeaconLn(item.minor) / item.distance; });
+                var dividor = this.sum(filtered, function (item) { return 1 / item.distance; });
+                var lat = latCounter / dividor;
+                var ln = lnCounter / dividor;
+                return new Graphic(new Point(lat, ln, this.map.spatialReference), null, { type: "weightedAvg", delay: measureItem.delay });
+            }
         };
         App.prototype.getNearestPoint = function (measureItem) {
             var _this = this;
             var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
             var min = this.min(filtered, function (t) { return t.distance; });
-            var beaconId = filtered.filter(function (s) { return s.distance === min; })[0].minor;
-            return new Graphic(this.getBeacon(beaconId).geometry, null, {
-                type: "nearestPoint", delay: measureItem.delay
-            });
+            var beacon = filtered.filter(function (s) { return s.distance === min; });
+            if (beacon.length > 0) {
+                var beaconId = beacon[0].minor;
+                return new Graphic(this.getBeacon(beaconId).geometry, null, {
+                    type: "nearestPoint", delay: measureItem.delay
+                });
+            }
         };
         App.prototype.getTrilateration = function (measureItem) {
             var _this = this;
             var filtered = measureItem.signals.filter(function (h) { return h.distance < _this.distanceFilter; });
             var sorted = filtered.sort(function (a, b) { return b.distance - a.distance; });
-            var farestBeacon = this.getBeacon(sorted[0].minor);
-            var startingGeometry = GeometryEngine.geodesicBuffer(farestBeacon.geometry, sorted[0].distance, "meters");
-            if (startingGeometry == null)
-                console.log("starting geometry was null");
-            for (var j = 1; j < sorted.length; j++) {
-                var buffer = GeometryEngine.geodesicBuffer(this.getBeacon(sorted[j].minor).geometry, sorted[j].distance, "meters");
-                if (buffer == null) {
-                    console.log("buffer geometry was null");
-                }
-                else {
-                    this.polygonLayer.add(new Graphic(buffer, null, {
-                        type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
-                    }));
-                }
-                ;
-                try {
-                    if (GeometryEngine.intersects(buffer, startingGeometry)) {
-                        var intersection = GeometryEngine.intersect(buffer, startingGeometry);
-                        if (intersection == null) {
-                            console.log("buffer and start intersected, but intersection was null");
-                        }
-                        else {
-                            startingGeometry = intersection;
-                        }
+            if (sorted.length > 0) {
+                var farestBeacon = this.getBeacon(sorted[0].minor);
+                var startingGeometry = GeometryEngine.geodesicBuffer(farestBeacon.geometry, sorted[0].distance, "meters");
+                if (startingGeometry == null)
+                    console.log("starting geometry was null");
+                for (var j = 1; j < sorted.length; j++) {
+                    var buffer = GeometryEngine.geodesicBuffer(this.getBeacon(sorted[j].minor).geometry, sorted[j].distance, "meters");
+                    if (buffer == null) {
+                        console.log("buffer geometry was null");
                     }
                     else {
-                        startingGeometry = buffer;
+                        this.polygonLayer.add(new Graphic(buffer, null, {
+                            type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+                        }));
+                    }
+                    ;
+                    try {
+                        if (GeometryEngine.intersects(buffer, startingGeometry)) {
+                            var intersection = GeometryEngine.intersect(buffer, startingGeometry);
+                            if (intersection == null) {
+                                console.log("buffer and start intersected, but intersection was null");
+                            }
+                            else {
+                                startingGeometry = intersection;
+                            }
+                        }
+                        else {
+                            startingGeometry = buffer;
+                        }
+                    }
+                    catch (e) {
+                        console.log(buffer, startingGeometry);
                     }
                 }
-                catch (e) {
-                    console.log(buffer, startingGeometry);
-                }
+                startingGeometry = GeometryEngine.simplify(startingGeometry);
+                this.polygonLayer.add(new Graphic(startingGeometry, null, {
+                    type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
+                }));
+                return new Graphic(this.getCentroid(startingGeometry), null, {
+                    type: "trilateration", delay: measureItem.delay
+                });
             }
-            startingGeometry = GeometryEngine.simplify(startingGeometry);
-            this.polygonLayer.add(new Graphic(startingGeometry, null, {
-                type: "trilateration", delay: measureItem.delay, measureId: measureItem.x.toString() + "_" + measureItem.y.toString()
-            }));
-            return new Graphic(this.getCentroid(startingGeometry), null, {
-                type: "trilateration", delay: measureItem.delay
-            });
         };
         App.prototype.getBeaconLat = function (beaconId) {
             var beacon = this.getBeacon(beaconId);
@@ -484,11 +500,14 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             var _loop_3 = function(dist_1) {
                 var cur = dists[dist_1];
                 avg = this_2.avg(cur, function (s) { return s; });
+                avg2 = this_2.avg(allDeltas[dist_1], function (s) { return s; });
+                varianz = this_2.sum(allDeltas[dist_1], function (s) { return Math.pow(avg2 - s, 2); }) / allDeltas[dist_1].length;
+                stddev = Math.sqrt(varianz);
                 tr = document.createElement("tr");
                 td1 = document.createElement("td");
                 td1.textContent = dist_1;
                 td2 = document.createElement("td");
-                td2.textContent = avg.toFixed(2);
+                td2.textContent = avg.toFixed(2) + "/" + avg2.toFixed(2) + " / " + varianz.toFixed(2) + " / " + stddev.toFixed(2);
                 tr.appendChild(td1);
                 tr.appendChild(td2);
                 tab.appendChild(tr);
@@ -516,7 +535,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 };
             };
             var this_2 = this;
-            var avg, tr, td1, td2;
+            var avg, avg2, varianz, stddev, tr, td1, td2;
             for (var dist_1 in dists) {
                 _loop_3(dist_1);
             }
