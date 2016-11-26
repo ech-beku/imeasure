@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analysor", "Analysor.csproj", "{FC2D6854-8B5E-4FA7-BBAD-B4F37D9A56D4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataManager", "..\DataManager\DataManager.csproj", "{DF2CDFC6-5F67-4DE7-8083-FBFBD83ACB7E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{FC2D6854-8B5E-4FA7-BBAD-B4F37D9A56D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC2D6854-8B5E-4FA7-BBAD-B4F37D9A56D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC2D6854-8B5E-4FA7-BBAD-B4F37D9A56D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF2CDFC6-5F67-4DE7-8083-FBFBD83ACB7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF2CDFC6-5F67-4DE7-8083-FBFBD83ACB7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF2CDFC6-5F67-4DE7-8083-FBFBD83ACB7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF2CDFC6-5F67-4DE7-8083-FBFBD83ACB7E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
