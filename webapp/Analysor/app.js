@@ -19,16 +19,23 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
         App.prototype.initializeUIEvents = function () {
             var _this = this;
             document.getElementById("fileselector").onchange = function () {
-                var files = document.getElementById("fileselector").files;
-                var reader = new FileReader();
-                reader.onload = function (event) {
+                _this.readFile(document.getElementById("fileselector"), function (dataUrl) {
                     var t = new Date().getTime();
-                    var dataUrl = event.target.result;
                     _this.jsonData = JSON.parse(dataUrl);
-                    _this.calculatePositions();
+                    if (_this.fingerPrintReference) {
+                        _this.calculatePositions();
+                    }
+                    else {
+                        alert("do not forgetti to set fingerprint reference!");
+                    }
                     console.log("Processing took " + (new Date().getTime() - t).toString() + " ms");
-                };
-                reader.readAsText(files[0]);
+                });
+            };
+            document.getElementById("fingerprintReference").onchange = function () {
+                _this.readFile(document.getElementById("fingerprintReference"), function (dataUrl) {
+                    _this.fingerPrintReference = JSON.parse(dataUrl);
+                    console.log("loaded fingerprint reference...");
+                });
             };
             this.txPower = document.getElementById("rssiSelector").value;
             document.getElementById("rssiSelector").onchange = function () {
@@ -75,6 +82,15 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             document.getElementById("drawTrilateration").onclick = function () {
                 _this.polygonLayer.setVisibility(document.getElementById("drawTrilateration").checked);
             };
+        };
+        App.prototype.readFile = function (input, proceed) {
+            var files = input.files;
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                var dataUrl = event.target.result;
+                proceed(dataUrl);
+            };
+            reader.readAsText(files[0]);
         };
         App.prototype.initializeLayers = function () {
             var _this = this;
@@ -125,6 +141,8 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             renderer.addValue("weightedAvg,false", jsonUtils.fromJson(symbolJson));
             symbolJson.color = [255, 0, 255, 255];
             renderer.addValue("trilateration,false", jsonUtils.fromJson(symbolJson));
+            symbolJson.color = [128, 128, 128, 255];
+            renderer.addValue("fingerprint,false", jsonUtils.fromJson(symbolJson));
             symbolJson.outline.width = 5;
             symbolJson.outline.color = [255, 0, 255, 255];
             renderer.addValue("trilateration,true", jsonUtils.fromJson(symbolJson));
@@ -134,6 +152,9 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             symbolJson.color = [255, 0, 0, 255];
             symbolJson.outline.color = [255, 0, 0, 255];
             renderer.addValue("nearestPoint,true", jsonUtils.fromJson(symbolJson));
+            symbolJson.color = [128, 128, 128, 255];
+            symbolJson.outline.color = [128, 128, 128, 255];
+            renderer.addValue("fingerprint,true", jsonUtils.fromJson(symbolJson));
             renderer.setOpacityInfo({
                 field: "distanceRatio",
                 maxDataValue: 1,
@@ -141,9 +162,9 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 opacityValues: [1, 0.5]
             });
             this.resultLayer.setRenderer(renderer);
-            this.map.addLayer(this.resultLayer);
             this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
             this.map.addLayer(this.measurePointLayer);
+            this.map.addLayer(this.resultLayer);
         };
         App.prototype.calculatePositions = function () {
             var measureData = this.jsonData;
@@ -188,6 +209,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 var stats = this.getStats(measurePoint, connectedFeatures[id_1], "weightedAvg");
                 mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "nearestPoint"));
                 mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "trilateration"));
+                mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id_1], "fingerprint"));
                 mixin.mixin(measurePoint.attributes, stats);
                 this.measurePointLayer.add(measurePoint);
                 this.heatmapLayer.add(new Graphic(measurePoint.geometry, null, measurePoint.attributes));
@@ -202,13 +224,14 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             return GeometryEngine.geodesicLength(poly1, "meters");
         };
         App.prototype.collectOverallStats = function () {
-            var types = ["weightedAvg", "nearestPoint", "trilateration"];
+            var types = ["weightedAvg", "nearestPoint", "trilateration", "fingerprint"];
             var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
             var currentRows = document.getElementsByClassName("statsrow");
             while (currentRows.length > 0) {
                 currentRows.item(0).remove();
             }
             var _loop_1 = function(typ) {
+                filtered = this_1.resultLayer.graphics.filter(function (t) { return t.attributes.type === typ; });
                 html = "<td>" + typ + "</td>";
                 var _loop_2 = function(att) {
                     html += "<td>" + this_1.avg(this_1.measurePointLayer.graphics, function (f) { return f.attributes[typ + att]; }).toFixed(2) + " m </td>";
@@ -217,13 +240,18 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                     var att = attrs_1[_i];
                     _loop_2(att);
                 }
+                overallAvg = this_1.avg(filtered, function (f) { return f.attributes["distanceToOrigin"]; });
+                sttdev = Math.sqrt(this_1.varianz(filtered, function (f) { return f.attributes["distanceToOrigin"]; }));
+                normV = this_1.normVerteilung(filtered, function (f) { return f.attributes["distanceToOrigin"]; }, -10, 10, 0.5);
+                raw = filtered.map(function (s) { return s.attributes["distanceToOrigin"]; }).join("\n");
+                html += "<td>" + overallAvg + "</td><td>" + sttdev + "</td><td><textarea>" + this_1.normToString(normV) + "</textarea></td><td><textarea>" + raw + "</textarea></td>";
                 row = document.createElement("tr");
                 row.innerHTML = html;
                 row.className = "statsrow";
                 document.getElementById("statsTable").appendChild(row);
             };
             var this_1 = this;
-            var html, row;
+            var filtered, html, overallAvg, sttdev, normV, raw, row;
             for (var _a = 0, types_1 = types; _a < types_1.length; _a++) {
                 var typ = types_1[_a];
                 _loop_1(typ);
@@ -234,6 +262,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 var weightedAvg = this.getWeightedAvg(measureItem);
                 var nearest = this.getNearestPoint(measureItem);
                 var trilat = this.getTrilateration(measureItem);
+                var fingerPrt = this.getFingerPrint(measureItem);
                 var res = [];
                 if (weightedAvg)
                     res.push(weightedAvg);
@@ -241,6 +270,8 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                     res.push(nearest);
                 if (trilat)
                     res.push(trilat);
+                if (fingerPrt)
+                    res.push(fingerPrt);
                 return res;
             }
             return [];
@@ -316,6 +347,45 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 });
             }
         };
+        App.prototype.getFingerPrint = function (measureItem) {
+            var minFpr = null;
+            var minDistance = 1000000;
+            for (var _i = 0, _a = this.fingerPrintReference; _i < _a.length; _i++) {
+                var fpr = _a[_i];
+                var distance = this.getFingerPrintDistance(measureItem, fpr);
+                if (distance < minDistance) {
+                    minFpr = fpr;
+                    minDistance = distance;
+                }
+            }
+            if (minFpr) {
+                var g = new Graphic(new Point(minFpr.x, minFpr.y, this.map.spatialReference), null, { type: "fingerprint", delay: measureItem.delay });
+                return g;
+            }
+            return null;
+        };
+        App.prototype.getFingerPrintDistance = function (measureItem1, measureItem2) {
+            var dist = 0;
+            var matches = 0;
+            var _loop_3 = function(sig) {
+                s = measureItem2.signals.filter(function (t) { return t.minor === sig.minor; });
+                if (s.length > 0) {
+                    dist += Math.abs(s[0].rssi - sig.rssi);
+                    matches++;
+                }
+            };
+            var s;
+            for (var _i = 0, _a = measureItem1.signals; _i < _a.length; _i++) {
+                var sig = _a[_i];
+                _loop_3(sig);
+            }
+            if (matches >= 3) {
+                return dist;
+            }
+            else {
+                return 10000;
+            }
+        };
         App.prototype.getBeaconLat = function (beaconId) {
             var beacon = this.getBeacon(beaconId);
             return beacon.geometry.x;
@@ -381,19 +451,45 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             }
             return m;
         };
+        App.prototype.varianz = function (dat, selector) {
+            var avg2 = this.avg(dat, selector);
+            return this.sum(dat, function (s) { return Math.pow(avg2 - selector(s), 2); }) / dat.length;
+        };
+        App.prototype.normVerteilung = function (dat, selector, start, stop, step) {
+            var stat = {};
+            for (var j = start; j <= stop; j += step) {
+                stat[j] = 0;
+                for (var _i = 0, dat_4 = dat; _i < dat_4.length; _i++) {
+                    var item = dat_4[_i];
+                    var val = selector(item);
+                    if (j <= val && val < (j + step))
+                        stat[j]++;
+                }
+            }
+            return stat;
+        };
+        App.prototype.normToString = function (stat) {
+            var str = "";
+            for (var item in stat) {
+                str += item + "\t" + stat[item] + "\n";
+            }
+            return str;
+        };
         App.prototype.getStats = function (measurePoint, positions, type) {
             var filtered = positions.filter(function (s) { return s.attributes.type === type; });
             var stats = {};
-            stats[type + "_avgDistance"] = this.avg(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
-            stats[type + "_minDistance"] = this.min(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
-            stats[type + "_maxDistance"] = this.max(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
-            stats[type + "_abreviation"] = stats[type + "_maxDistance"] - stats[type + "_minDistance"];
-            var featureWithMinDistance = filtered.filter(function (s) { return s.attributes.distanceToOrigin === stats[type + "_minDistance"]; })[0];
-            stats[type + "_delayOfMinDistance"] = featureWithMinDistance.attributes.delay;
-            featureWithMinDistance.attributes.isMinimalDistance = true;
-            for (var _i = 0, filtered_1 = filtered; _i < filtered_1.length; _i++) {
-                var f = filtered_1[_i];
-                f.attributes.distanceRatio = (f.attributes.distanceToOrigin - stats[type + "_minDistance"]) / (stats[type + "_abreviation"]);
+            if (filtered.length > 0) {
+                stats[type + "_avgDistance"] = this.avg(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
+                stats[type + "_minDistance"] = this.min(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
+                stats[type + "_maxDistance"] = this.max(filtered, function (fet) { return fet.attributes.distanceToOrigin; });
+                stats[type + "_abreviation"] = stats[type + "_maxDistance"] - stats[type + "_minDistance"];
+                var featureWithMinDistance = filtered.filter(function (s) { return s.attributes.distanceToOrigin === stats[type + "_minDistance"]; })[0];
+                stats[type + "_delayOfMinDistance"] = featureWithMinDistance.attributes.delay;
+                featureWithMinDistance.attributes.isMinimalDistance = true;
+                for (var _i = 0, filtered_1 = filtered; _i < filtered_1.length; _i++) {
+                    var f = filtered_1[_i];
+                    f.attributes.distanceRatio = (f.attributes.distanceToOrigin - stats[type + "_minDistance"]) / (stats[type + "_abreviation"]);
+                }
             }
             return stats;
         };
@@ -436,6 +532,7 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
             this.resultLayer.redraw();
         };
         App.prototype.createRssiCalibrationReport = function () {
+            var _this = this;
             this.distanceCorrection = parseInt(document.getElementById("distanceCorrection").value);
             this.distanceFilter = parseFloat(document.getElementById("distanceFilter").value);
             var txPowers = [];
@@ -497,11 +594,11 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 }
             }
             var tab = document.createElement("table");
-            var _loop_3 = function(dist_1) {
+            var _loop_4 = function(dist_1) {
                 var cur = dists[dist_1];
                 avg = this_2.avg(cur, function (s) { return s; });
                 avg2 = this_2.avg(allDeltas[dist_1], function (s) { return s; });
-                varianz = this_2.sum(allDeltas[dist_1], function (s) { return Math.pow(avg2 - s, 2); }) / allDeltas[dist_1].length;
+                varianz = this_2.varianz(allDeltas[dist_1], function (s) { return s; });
                 stddev = Math.sqrt(varianz);
                 tr = document.createElement("tr");
                 td1 = document.createElement("td");
@@ -513,31 +610,16 @@ define(["require", "exports", "esri/map", "esri/layers/GraphicsLayer", "esri/gra
                 tab.appendChild(tr);
                 tr.style.cursor = "pointer";
                 tr.onclick = function () {
-                    var start = -10;
-                    var stop = 10;
-                    var step = 0.5;
-                    var stat = {};
-                    for (var j = start; j <= stop; j += step) {
-                        stat[j] = 0;
-                        for (var _i = 0, _a = allDeltas[dist_1]; _i < _a.length; _i++) {
-                            var item = _a[_i];
-                            if (j <= item && item < (j + step))
-                                stat[j]++;
-                        }
-                    }
+                    var stat = _this.normVerteilung(allDeltas[dist_1], function (s) { return s; }, -10, 10, 0.5);
                     var i = document.createElement("textarea");
-                    var str = "";
-                    for (var item in stat) {
-                        str += item + "\t" + stat[item] + "\n";
-                    }
-                    i.value = str;
+                    i.value = _this.normToString(stat);
                     document.getElementById("calibrationresult").appendChild(i);
                 };
             };
             var this_2 = this;
             var avg, avg2, varianz, stddev, tr, td1, td2;
             for (var dist_1 in dists) {
-                _loop_3(dist_1);
+                _loop_4(dist_1);
             }
             document.getElementById("calibrationresult").innerHTML = "";
             document.getElementById("calibrationresult").appendChild(tab);

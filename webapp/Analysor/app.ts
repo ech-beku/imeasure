@@ -52,6 +52,8 @@ class App {
     private beaconLayer: FeatureLayer;
 
     private jsonData: Array<MeasureDataItem>;
+    private fingerPrintReference: Array<MeasureDataItem>;
+
     private txPower: number;
 
     private distanceCorrection: number = 2;
@@ -77,25 +79,28 @@ class App {
 
         document.getElementById("fileselector").onchange = () => {
 
-            var files = (<any>document.getElementById("fileselector")).files;
-
-            var reader = new FileReader();
-
-            reader.onload = (event: any) => {
+            this.readFile(document.getElementById("fileselector"), (dataUrl) => {
 
                 var t = new Date().getTime();
-
-                var dataUrl = event.target.result;
                 this.jsonData = JSON.parse(dataUrl);
-                this.calculatePositions();
 
+                if (this.fingerPrintReference) {
+                    this.calculatePositions();
+                } else {
+                    alert("do not forgetti to set fingerprint reference!");
+                }
                 console.log("Processing took " + (new Date().getTime() - t).toString() + " ms");
-
-            }
-
-            reader.readAsText(files[0]);
-
+            });
         };
+
+        document.getElementById("fingerprintReference").onchange = () => {
+
+            this.readFile(document.getElementById("fingerprintReference"), (dataUrl) => {
+                this.fingerPrintReference = JSON.parse(dataUrl);
+                console.log("loaded fingerprint reference...");
+            });
+        };
+
         this.txPower = <any>(<HTMLInputElement>document.getElementById("rssiSelector")).value;
 
         document.getElementById("rssiSelector").onchange = () => {
@@ -155,6 +160,25 @@ class App {
         }
 
     }
+
+    private readFile(input: any, proceed: (dataUrl: any) => void) {
+        var files = input.files;
+
+        var reader = new FileReader();
+
+        reader.onload = (event: any) => {
+
+            var dataUrl = event.target.result;
+
+            proceed(dataUrl);
+
+
+
+        }
+
+        reader.readAsText(files[0]);
+    }
+
     private initializeLayers() {
         this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl,
             { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
@@ -226,6 +250,9 @@ class App {
         symbolJson.color = [255, 0, 255, 255];
         renderer.addValue("trilateration,false", jsonUtils.fromJson(symbolJson));
 
+        symbolJson.color = [128, 128, 128, 255];
+        renderer.addValue("fingerprint,false", jsonUtils.fromJson(symbolJson));
+
         symbolJson.outline.width = 5;
         symbolJson.outline.color = [255, 0, 255, 255];
         renderer.addValue("trilateration,true", jsonUtils.fromJson(symbolJson));
@@ -238,6 +265,10 @@ class App {
         symbolJson.outline.color = [255, 0, 0, 255];
         renderer.addValue("nearestPoint,true", jsonUtils.fromJson(symbolJson));
 
+        symbolJson.color = [128, 128, 128, 255];
+        symbolJson.outline.color = [128, 128, 128, 255]
+        renderer.addValue("fingerprint,true", jsonUtils.fromJson(symbolJson));
+
         renderer.setOpacityInfo({
             field: "distanceRatio",
             maxDataValue: 1,
@@ -247,12 +278,13 @@ class App {
 
         this.resultLayer.setRenderer(renderer);
 
+        this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
+        this.map.addLayer(this.measurePointLayer);
+
         this.map.addLayer(this.resultLayer);
 
 
 
-        this.measurePointLayer.setRenderer(new SimpleRenderer(jsonUtils.fromJson(this.config.measurePointSymbol)));
-        this.map.addLayer(this.measurePointLayer);
 
     }
 
@@ -310,9 +342,9 @@ class App {
             }
 
             var stats = this.getStats(measurePoint, connectedFeatures[id], "weightedAvg");
-
             mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "nearestPoint"));
             mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "trilateration"));
+            mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "fingerprint"));
 
             mixin.mixin(measurePoint.attributes, stats);
 
@@ -336,7 +368,7 @@ class App {
     }
 
     collectOverallStats() {
-        var types = ["weightedAvg", "nearestPoint", "trilateration"];
+        var types = ["weightedAvg", "nearestPoint", "trilateration", "fingerprint"];
         var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
 
         var currentRows = document.getElementsByClassName("statsrow");
@@ -344,11 +376,26 @@ class App {
             currentRows.item(0).remove();
         }
 
+
+
         for (let typ of types) {
+
+            var filtered = this.resultLayer.graphics.filter(t => t.attributes.type === typ);
+
+           
+
             var html = `<td>${typ}</td>`;
             for (let att of attrs) {
                 html += `<td>${this.avg(this.measurePointLayer.graphics, f => f.attributes[typ + att]).toFixed(2)} m </td>`
             }
+
+            var overallAvg = this.avg(filtered, f => f.attributes["distanceToOrigin"]);
+            var sttdev = Math.sqrt(this.varianz(filtered, f => f.attributes["distanceToOrigin"]));
+            var normV = this.normVerteilung(filtered, f => f.attributes["distanceToOrigin"], -10, 10, 0.5);
+
+            var raw = filtered.map(s => s.attributes["distanceToOrigin"]).join("\n");
+
+            html += `<td>${overallAvg}</td><td>${sttdev}</td><td><textarea>${this.normToString(normV)}</textarea></td><td><textarea>${raw}</textarea></td>`;
 
             var row = document.createElement("tr");
             row.innerHTML = html;
@@ -363,15 +410,15 @@ class App {
             var weightedAvg = this.getWeightedAvg(measureItem);
             var nearest = this.getNearestPoint(measureItem);
             var trilat = this.getTrilateration(measureItem);
+            var fingerPrt = this.getFingerPrint(measureItem);
 
             var res = [];
 
 
             if (weightedAvg) res.push(weightedAvg);
             if (nearest) res.push(nearest);
-            if (trilat) res.push(trilat); 
-
-            
+            if (trilat) res.push(trilat);
+            if (fingerPrt) res.push(fingerPrt);
 
             return res;
         }
@@ -409,7 +456,7 @@ class App {
             return new Graphic(this.getBeacon(beaconId).geometry, null, {
                 type: "nearestPoint", delay: measureItem.delay
             });
-        } 
+        }
     }
 
     getTrilateration(measureItem: MeasureDataItem): Graphic {
@@ -463,6 +510,45 @@ class App {
             });
         }
 
+    }
+
+    getFingerPrint(measureItem: MeasureDataItem): Graphic {
+        var minFpr: MeasureDataItem = null;
+        var minDistance = 1000000;
+        for (let fpr of this.fingerPrintReference) {
+            var distance = this.getFingerPrintDistance(measureItem, fpr);
+            if (distance < minDistance) {
+                minFpr = fpr;
+                minDistance = distance;
+            }
+        }
+
+        if (minFpr) {
+            var g = new Graphic(new Point(minFpr.x, minFpr.y, this.map.spatialReference), null, { type: "fingerprint", delay: measureItem.delay });
+            return g;
+        }
+        return null;
+    }
+
+    getFingerPrintDistance(measureItem1: MeasureDataItem, measureItem2: MeasureDataItem): number {
+
+        var dist = 0;
+        var matches = 0;
+
+        for (let sig of measureItem1.signals) {
+            var s = measureItem2.signals.filter(t => t.minor === sig.minor);
+
+            if (s.length > 0) {
+                dist += Math.abs(s[0].rssi - sig.rssi);
+                matches++;
+            }
+        }
+
+        if (matches >= 3) {
+            return dist;
+        } else {
+            return 10000;
+        }
     }
 
     getBeaconLat(beaconId: number): number {
@@ -540,24 +626,53 @@ class App {
         return m;
     }
 
+    varianz<T>(dat: Array<T>, selector: (T: T) => number): number {
+        var avg2 = this.avg(dat, selector);
+        return this.sum(dat, s => Math.pow(avg2 - selector(s), 2)) / dat.length;
+    }
+
+    normVerteilung<T>(dat: Array<T>, selector: (T: T) => number, start: number, stop: number, step: number): { [index: number]: number } {
+
+        var stat: { [index: number]: number } = {};
+
+        for (let j = start; j <= stop; j += step) {
+            stat[j] = 0;
+            for (let item of dat) {
+                let val = selector(item);
+                if (j <= val && val < (j + step)) stat[j]++;
+            }
+        }
+        return stat;
+    }
+
+    normToString(stat: { [index: number]: number }): string {
+        var str = "";
+
+        for (let item in stat) {
+            str += item + "\t" + stat[item] + "\n";
+        }
+        return str;
+    }
 
     getStats(measurePoint: Graphic, positions: Array<Graphic>, type: string): any {
         var filtered = positions.filter(s => s.attributes.type === type);
 
         var stats = {}
-        stats[type + "_avgDistance"] = this.avg(filtered, fet => fet.attributes.distanceToOrigin);
-        stats[type + "_minDistance"] = this.min(filtered, fet => fet.attributes.distanceToOrigin);
-        stats[type + "_maxDistance"] = this.max(filtered, fet => fet.attributes.distanceToOrigin);
 
-        stats[type + "_abreviation"] = stats[type + "_maxDistance"] - stats[type + "_minDistance"];
+        if (filtered.length > 0) {
+            stats[type + "_avgDistance"] = this.avg(filtered, fet => fet.attributes.distanceToOrigin);
+            stats[type + "_minDistance"] = this.min(filtered, fet => fet.attributes.distanceToOrigin);
+            stats[type + "_maxDistance"] = this.max(filtered, fet => fet.attributes.distanceToOrigin);
+            stats[type + "_abreviation"] = stats[type + "_maxDistance"] - stats[type + "_minDistance"];
 
-        var featureWithMinDistance = filtered.filter(s => s.attributes.distanceToOrigin === stats[type + "_minDistance"])[0]
+            var featureWithMinDistance = filtered.filter(s => s.attributes.distanceToOrigin === stats[type + "_minDistance"])[0]
 
-        stats[type + "_delayOfMinDistance"] = featureWithMinDistance.attributes.delay;
-        featureWithMinDistance.attributes.isMinimalDistance = true;
+            stats[type + "_delayOfMinDistance"] = featureWithMinDistance.attributes.delay;
+            featureWithMinDistance.attributes.isMinimalDistance = true;
 
-        for (let f of filtered) {
-            f.attributes.distanceRatio = (f.attributes.distanceToOrigin - stats[type + "_minDistance"]) / (stats[type + "_abreviation"]);
+            for (let f of filtered) {
+                f.attributes.distanceRatio = (f.attributes.distanceToOrigin - stats[type + "_minDistance"]) / (stats[type + "_abreviation"]);
+            }
         }
 
         return stats;
@@ -686,7 +801,7 @@ class App {
             var avg = this.avg(cur, s => <number>s);
 
             var avg2 = this.avg(allDeltas[dist], s => <number>s);
-            var varianz = this.sum(allDeltas[dist], s => Math.pow(avg2 - <number>s, 2)) / allDeltas[dist].length;
+            var varianz = this.varianz(allDeltas[dist], s => <number>s);
             var stddev = Math.sqrt(varianz);
 
             var tr = document.createElement("tr");
@@ -702,26 +817,9 @@ class App {
 
             tr.style.cursor = "pointer";
             tr.onclick = () => {
-                let start = -10;
-                let stop = 10;
-                let step = 0.5;
-
-                var stat = {};
-
-                for (let j = start; j <= stop; j += step) {
-                    stat[j] = 0;
-                    for (let item of allDeltas[dist]) {
-                        if (j <= item && item < (j + step)) stat[j]++;
-                    }
-                }
-
+                var stat = this.normVerteilung(allDeltas[dist], s => <number>s, -10, 10, 0.5);
                 var i = document.createElement("textarea");
-                var str = "";
-
-                for (let item in stat) {
-                    str += item + "\t" + stat[item] + "\n";
-                }
-                i.value = str;
+                i.value = this.normToString(stat);
                 document.getElementById("calibrationresult").appendChild(i);
 
             };
