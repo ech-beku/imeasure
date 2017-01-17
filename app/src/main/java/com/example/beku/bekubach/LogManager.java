@@ -42,7 +42,7 @@ public class LogManager {
 
         activeLogItems = new JSONArray();
 
-        if (existing_measure != "-") {
+        if (!existing_measure.equals( "-")) {
             File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), existing_measure);
 
             //Read text from file

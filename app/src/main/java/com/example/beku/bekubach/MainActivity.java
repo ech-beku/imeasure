@@ -1,22 +1,18 @@
 package com.example.beku.bekubach;
 
 import android.Manifest;
-import android.animation.ObjectAnimator;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.DataSetObserver;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -29,7 +25,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         boolean doesACheck = false;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -38,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
 
                 doesACheck = true;
 
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("This app needs location access");
                 builder.setMessage("Please grant location access so this app can detect beacons.");
                 builder.setPositiveButton(android.R.string.ok, null);
@@ -74,24 +69,24 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-if(doesACheck == false) {
-    File downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (doesACheck == false) {
+            File downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
-    File[] files = downloadFolderPath.listFiles();
+            File[] files = downloadFolderPath.listFiles();
 
-    ArrayList<String> fileList = new ArrayList<String>();
-    fileList.add("-");
-    for (File file : files) {
-        if (file.getName().indexOf("iBeaconLOG") == 0) {
-            fileList.add(file.getName());
+            ArrayList<String> fileList = new ArrayList<String>();
+            fileList.add("-");
+            for (File file : files) {
+                if (file.getName().indexOf("iBeaconLOG") == 0) {
+                    fileList.add(file.getName());
+                }
+            }
+
+            ArrayAdapter<String> entryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, fileList);
+            entryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+            ((Spinner) findViewById(R.id.existingMeasureSpinner)).setAdapter(entryAdapter);
         }
-    }
-
-    ArrayAdapter<String> entryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, fileList);
-    entryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-    ((Spinner) findViewById(R.id.existingMeasureSpinner)).setAdapter(entryAdapter);
-}
     }
 
     @Override
@@ -121,14 +116,13 @@ if(doesACheck == false) {
     }
 
 
-
-    public void startMeasure(View sender){
+    public void startMeasure(View sender) {
         Spinner messpunktSpinner = (Spinner) findViewById(R.id.messpunkt_spinner);
         Spinner messdauerSpinner = (Spinner) findViewById(R.id.messdauer_spinner);
         Intent i = new Intent(MainActivity.this, MeasureActivity.class);
         i.putExtra("measure_points", String.valueOf(messpunktSpinner.getSelectedItem()));
         i.putExtra("measure_duration", String.valueOf(messdauerSpinner.getSelectedItem()));
-        i.putExtra("existing_measure", String.valueOf(((Spinner)findViewById(R.id.existingMeasureSpinner)).getSelectedItem()));
+        i.putExtra("existing_measure", String.valueOf(((Spinner) findViewById(R.id.existingMeasureSpinner)).getSelectedItem()));
         startActivity(i);
 
     }

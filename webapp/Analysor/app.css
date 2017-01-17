@@ -78,7 +78,7 @@ td {
 
 div#calibrationresult {
     overflow-y: scroll;
-    max-height: 300px;
+    max-height: 161px;
 }
 
 div#calibrationresult   td {

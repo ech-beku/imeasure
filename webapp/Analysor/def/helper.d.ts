@@ -1,8 +1,15 @@
-﻿declare module "helper/DojoWidget" {
+﻿///<reference path="./arcgis.d.ts" />
+
+
+//import FeatureSet = require("esri/tasks/FeatureSet");
+
+declare module "helper/DojoWidget" {
+
 
     class DojoWidget {
         public templatePath: string;
         public domNode: HTMLElement;
+
 
         constructor(mixinOptions: any, templatePath: string);
     }
@@ -20,3 +27,5 @@ declare module "helper/Levensthein" {
     //}
 
 }
+
+

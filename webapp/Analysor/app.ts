@@ -82,7 +82,9 @@ class App {
             this.readFile(document.getElementById("fileselector"), (dataUrl) => {
 
                 var t = new Date().getTime();
+                
                 this.jsonData = JSON.parse(dataUrl);
+                this.cleanUnusedSignals();
 
                 if (this.fingerPrintReference) {
                     this.calculatePositions();
@@ -186,7 +188,7 @@ class App {
 
         this.map.addLayer(this.beaconLayer);
 
-        this.map.addLayer(new FeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/ArcGIS/rest/services/Umgebung_1/FeatureServer/3", { mode: FeatureLayer.MODE_SNAPSHOT }));
+        this.map.addLayer(new FeatureLayer(this.config.umgebungServiceUrl, { mode: FeatureLayer.MODE_SNAPSHOT }));
 
 
         var layerDefinition = {
@@ -288,6 +290,7 @@ class App {
 
     }
 
+
     calculatePositions() {
 
         var measureData = this.jsonData;
@@ -358,6 +361,17 @@ class App {
 
         this.heatmapLayer.redraw();
         this.resultLayer.redraw();
+    }
+
+    cleanUnusedSignals() {
+        var beaconMinors = this.beaconLayer.graphics.map(t => t.attributes.Minor);
+        for (let measurement of this.jsonData) {
+            for (let i = measurement.signals.length - 1; i >= 0; i--) {
+                if (beaconMinors.indexOf(measurement.signals[i].minor) < 0) {
+                    measurement.signals.splice(i, 1);
+                }
+            }
+        }
     }
 
     getDistanceFromPoints(p1: any, p2: any) {
@@ -554,11 +568,15 @@ class App {
     getBeaconLat(beaconId: number): number {
         var beacon = this.getBeacon(beaconId);
 
-        return (<Point>beacon.geometry).x
+        if (beacon)
+            return (<Point>beacon.geometry).x
     }
 
     getBeaconLn(beaconId: number): number {
-        return (<Point>this.getBeacon(beaconId).geometry).y;
+        var beacon = this.getBeacon(beaconId);
+        if (beacon)
+            return (<Point>this.getBeacon(beaconId).geometry).y;
+
     }
 
     getBeacon(beaconId: number): Graphic {
@@ -817,9 +835,9 @@ class App {
 
             tr.style.cursor = "pointer";
             tr.onclick = () => {
-                var stat = this.normVerteilung(allDeltas[dist], s => <number>s, -10, 10, 0.5);
+                var stat = allDeltas[dist].join("\n");
                 var i = document.createElement("textarea");
-                i.value = this.normToString(stat);
+                i.value = stat;
                 document.getElementById("calibrationresult").appendChild(i);
 
             };

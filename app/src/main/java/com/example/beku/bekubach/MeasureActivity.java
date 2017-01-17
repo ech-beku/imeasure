@@ -1,43 +1,29 @@
 package com.example.beku.bekubach;
 
 
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.SystemClock;
-import android.support.v4.widget.TextViewCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.ButtonBarLayout;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.android.internal.util.Predicate;
-import com.esri.android.map.FeatureLayer;
 import com.esri.android.map.GraphicsLayer;
 import com.esri.android.map.MapView;
 import com.esri.android.map.ags.ArcGISFeatureLayer;
 import com.esri.android.map.event.OnStatusChangedListener;
+import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.SpatialReference;
 import com.esri.core.map.Graphic;
-import com.esri.core.renderer.SimpleRenderer;
 import com.esri.core.renderer.UniqueValue;
 import com.esri.core.renderer.UniqueValueRenderer;
 import com.esri.core.symbol.SimpleMarkerSymbol;
 import com.esri.core.symbol.TextSymbol;
-
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,15 +31,11 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.UUID;
 
 public class MeasureActivity extends AppCompatActivity implements OnSignalChangedListener {
 
@@ -106,11 +88,13 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
 
         mapView = (MapView) findViewById(R.id.MapView);
 
-        ArcGISFeatureLayer l = new ArcGISFeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_1/FeatureServer/3", ArcGISFeatureLayer.MODE.SNAPSHOT);
+        ArcGISFeatureLayer l = new ArcGISFeatureLayer("http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_2/FeatureServer/2", ArcGISFeatureLayer.MODE.SNAPSHOT);
 
         mapView.addLayer(l);
 
-        measurePointLayer = new GraphicsLayer();
+
+        measurePointLayer = new GraphicsLayer(SpatialReference.create(102100), new Envelope(0,0,100,100));
+
         mapView.addLayer(measurePointLayer);
 
 
@@ -332,11 +316,11 @@ public class MeasureActivity extends AppCompatActivity implements OnSignalChange
     }
 
     public void endLog(View v) {
-
+        measureTimer.cancel();
         mp.start();
         logManager.stop(this);
         checkButtonState();
-        measureTimer.cancel();
+
 
         if(selectedMeasurePoint != null){
 

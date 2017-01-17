@@ -11,7 +11,8 @@
         }
     },
     //beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Beacons_Office/FeatureServer/0",
-    beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_1/FeatureServer/0",
+    beaconServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/arcgis/rest/services/Umgebung_2/FeatureServer/0",
+    umgebungServiceUrl: "http://services7.arcgis.com/9lVYHAWgmOjTa6bn/ArcGIS/rest/services/Umgebung_2/FeatureServer/2",
     heatmapProperties: {
         colors: ["rgb(0, 255, 0)", "rgb(255, 255, 0)", "rgb(255, 0, 0)"],
         blurRadius: 12,
