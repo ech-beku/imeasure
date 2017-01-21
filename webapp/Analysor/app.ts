@@ -50,6 +50,7 @@ class App {
     private polygonLayer: GraphicsLayer;
 
     private beaconLayer: FeatureLayer;
+    private grundrissLayer: FeatureLayer;
 
     private jsonData: Array<MeasureDataItem>;
     private fingerPrintReference: Array<MeasureDataItem>;
@@ -161,6 +162,15 @@ class App {
             this.polygonLayer.setVisibility((<any>document.getElementById("drawTrilateration")).checked);
         }
 
+        document.getElementById("drawResultPoints").onclick = () => {
+            this.resultLayer.setVisibility((document.getElementById("drawResultPoints") as any).checked);
+        }
+
+        document.getElementById("umfeld").onchange = () => {
+
+            this.changeUmfeld((document.getElementById("umfeld") as any).value);
+        }
+
     }
 
     private readFile(input: any, proceed: (dataUrl: any) => void) {
@@ -181,14 +191,26 @@ class App {
         reader.readAsText(files[0]);
     }
 
-    private initializeLayers() {
-        this.beaconLayer = new FeatureLayer(this.config.beaconServiceUrl,
-            { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
-        this.beaconLayer.setOpacity(0);
+    private changeUmfeld(ind: number) {
+        if (this.beaconLayer)
+            this.map.removeLayer(this.beaconLayer);
 
+        if (this.grundrissLayer)
+            this.map.removeLayer(this.grundrissLayer);
+
+        this.beaconLayer = new FeatureLayer(this.config.serviceUrls[ind].beaconServiceUrl,
+            { mode: FeatureLayer.MODE_SNAPSHOT, outFields: ["*"] });
+
+
+        this.grundrissLayer = new FeatureLayer(this.config.serviceUrls[ind].umgebungServiceUrl, { mode: FeatureLayer.MODE_SNAPSHOT });
+
+        this.map.addLayer(this.grundrissLayer);
         this.map.addLayer(this.beaconLayer);
 
-        this.map.addLayer(new FeatureLayer(this.config.umgebungServiceUrl, { mode: FeatureLayer.MODE_SNAPSHOT }));
+    }
+
+    private initializeLayers() {
+        this.changeUmfeld(0);
 
 
         var layerDefinition = {
@@ -209,6 +231,7 @@ class App {
         this.heatmapLayer.setRenderer(new HeatmapRenderer(this.config.heatmapProperties));
 
         this.heatmapLayer.setOpacity(0.5);
+
 
         this.map.addLayer(this.heatmapLayer);
 
@@ -315,9 +338,10 @@ class App {
 
             var id = item.x.toString() + "_" + item.y.toString();
 
+            console.log("processing "+ id);
+
             if (measureId[id] == null) {
                 measureId[id] = new Graphic(new Point(item.x, item.y, this.map.spatialReference), null, { measureId: id });
-
 
                 connectedFeatures[id] = new Array<Graphic>();
             }
@@ -337,13 +361,34 @@ class App {
             }
         }
 
+        var latencyData = {"weightedAvg": "", "nearestPoint": "", trilateration: "", fingerprint: ""};
+        var types = ["weightedAvg", "nearestPoint", "trilateration", "fingerprint"];
+
+        console.log("processing statistics");
+
         for (let id in connectedFeatures) {
             var measurePoint = measureId[id];
+
+            console.log("processing " + id);
 
             for (let f of connectedFeatures[id]) {
                 f.attributes.distanceToOrigin = this.getDistanceFromPoints(measurePoint.geometry, f.geometry);
             }
 
+
+            for (let t of types) {
+                var ps = connectedFeatures[id].filter(a => a.attributes.type === t);
+                var line = id + "\t";
+
+                for (let i = 0; i <= 30; i++) {
+                    var f = ps.filter(a => i * 1000 < a.attributes.delay && a.attributes.delay <= (i + 1) * 1000);
+                    line += this.avg(f.map(s => s.attributes.distanceToOrigin), k => k) + "\t";
+                }
+
+                latencyData[t] += line + "\n";
+            }
+
+           
             var stats = this.getStats(measurePoint, connectedFeatures[id], "weightedAvg");
             mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "nearestPoint"));
             mixin.mixin(stats, this.getStats(measurePoint, connectedFeatures[id], "trilateration"));
@@ -356,7 +401,9 @@ class App {
 
         }
 
-        this.collectOverallStats();
+
+
+        this.collectOverallStats(latencyData);
 
 
         this.heatmapLayer.redraw();
@@ -381,7 +428,7 @@ class App {
         return GeometryEngine.geodesicLength(poly1, "meters");
     }
 
-    collectOverallStats() {
+    collectOverallStats(latencyData) {
         var types = ["weightedAvg", "nearestPoint", "trilateration", "fingerprint"];
         var attrs = ["_avgDistance", "_minDistance", "_maxDistance", "_delayOfMinDistance"];
 
@@ -396,8 +443,6 @@ class App {
 
             var filtered = this.resultLayer.graphics.filter(t => t.attributes.type === typ);
 
-           
-
             var html = `<td>${typ}</td>`;
             for (let att of attrs) {
                 html += `<td>${this.avg(this.measurePointLayer.graphics, f => f.attributes[typ + att]).toFixed(2)} m </td>`
@@ -409,7 +454,9 @@ class App {
 
             var raw = filtered.map(s => s.attributes["distanceToOrigin"]).join("\n");
 
-            html += `<td>${overallAvg}</td><td>${sttdev}</td><td><textarea>${this.normToString(normV)}</textarea></td><td><textarea>${raw}</textarea></td>`;
+
+
+            html += `<td>${overallAvg}</td><td>${sttdev}</td><td><textarea>${this.normToString(normV)}</textarea></td><td><textarea>${raw}</textarea><textarea>${latencyData[typ]}</textarea></td>`;
 
             var row = document.createElement("tr");
             row.innerHTML = html;
@@ -742,7 +789,7 @@ class App {
 
         var txPowers = [];
         var dists = {};
-        for (let i = -100; i < -0; i++) {
+        for (let i = -58; i < -40; i++) {
             txPowers.push(i);
 
             dists[i] = [];
@@ -790,7 +837,7 @@ class App {
                     for (let k of collectedBeacons[beac]) {
                         var dist = this.calculateDistance(k, txPower);
 
-                        if (dist < this.distanceFilter) {
+                        if (0 - this.distanceFilter < dist && dist < this.distanceFilter) {
                             allDeltas[txPower].push(dist - distanceBecMeasure);
                             sss.push(dist);
                         }

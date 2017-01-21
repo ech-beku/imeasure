@@ -38,13 +38,18 @@
 
         <div id="log_upload">
 
+            Umfeld <select id="umfeld">
+            <option value="0">Umfeld 1</option>
+            <option value="1">Umfeld 2</option></select>
+
             <input type="file" id="fileselector" />
             <br />
             rssi: <input id="rssiSelector" type="range" min="-100" max="100" step="1" value="-58" />
             <span id="txPower">-58</span><br />
 
             process only first 100 features<input checked="checked" type="checkbox" id="proceesOnly5" /><br/>
-            draw trilateration polygons<input type="checkbox" id="drawTrilateration" /><br/>
+            draw trilateration polygons<input type="checkbox" id="drawTrilateration" checked="checked" /><br />
+            draw result points<input type="checkbox" id="drawResultPoints" checked="checked" /><br/>
             inputcorrection <input id="distanceCorrection" value="0" /><br />
             distance Filter <input id="distanceFilter" value="5"/> <br/>
             fingerPrint reference <input id="fingerprintReference" type="file" />
@@ -59,6 +64,7 @@
 
             <select id="heatmapSelector">
                 <option value="weightedAvg">WeightedAverage</option>
+                <option value="fingerprint">Fingerprint</option>
                 <option value="nearestPoint">NearestPoint</option>
                 <option value="trilateration">Trilateration</option>
             </select>

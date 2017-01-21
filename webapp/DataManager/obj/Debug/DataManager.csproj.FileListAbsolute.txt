@@ -6,3 +6,11 @@ C:\Projekte\imeasure\webapp\DataManager\bin\Debug\Newtonsoft.Json.xml
 C:\Projekte\imeasure\webapp\DataManager\obj\Debug\DataManager.csprojResolveAssemblyReference.cache
 C:\Projekte\imeasure\webapp\DataManager\obj\Debug\DataManager.exe
 C:\Projekte\imeasure\webapp\DataManager\obj\Debug\DataManager.pdb
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\bin\Debug\DataManager.exe.config
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\obj\Debug\DataManager.exe
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\obj\Debug\DataManager.pdb
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\bin\Debug\DataManager.exe
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\bin\Debug\DataManager.pdb
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\bin\Debug\Newtonsoft.Json.dll
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\bin\Debug\Newtonsoft.Json.xml
+C:\Projects\Test\BachelorThesis\imeasure\webapp\DataManager\obj\Debug\DataManager.csprojResolveAssemblyReference.cache

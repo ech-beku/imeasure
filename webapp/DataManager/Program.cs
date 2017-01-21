@@ -13,7 +13,7 @@ namespace DataManager
     {
         static void Main(string[] args)
         {
-            var dataFiles = Directory.GetFiles(@"C:\Users\Beda\Dropbox\FFHS\BACH\results\Umgebung_1");
+            var dataFiles = Directory.GetFiles(@"C:\Users\beku\Dropbox\FFHS\BACH\results\Umgebung_2");
 
             JArray extData = null;
 
@@ -50,7 +50,7 @@ namespace DataManager
 
             averageRssis(extData);
 
-            File.WriteAllText(@"C:\Users\Beda\Dropbox\FFHS\BACH\results\Umgebung_1\avg.json", extData.ToString());
+            File.WriteAllText(@"C:\Users\beku\Dropbox\FFHS\BACH\results\Umgebung_2\avg.json", extData.ToString());
 
         }
 
